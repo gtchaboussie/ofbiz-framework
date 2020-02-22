@@ -453,8 +453,8 @@ under the License.
     </service>
 
     <!-- ContactMech services -->
-    <service name="createPartyContactMech" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="createPartyContactMech" auth="true">
+    <service name="createPartyContactMech" engine="groovy"
+            location="component://party/groovyScripts/contact/PartyContactMechServices.groovy" invoke="createPartyContactMech" auth="true">
         <description>Create a PartyContactMech</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="CREATE"/>
         <auto-attributes entity-name="ContactMech" include="nonpk" mode="IN" optional="true"/>
@@ -467,8 +467,8 @@ under the License.
             </type-validate>
         </attribute>
     </service>
-    <service name="updatePartyContactMech" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="updatePartyContactMech" auth="true">
+    <service name="updatePartyContactMech" engine="groovy"
+             location="component://party/groovyScripts/contact/PartyContactMechServices.groovy" invoke="updatePartyContactMech" auth="true">
         <description>Update a PartyContactMech</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="UPDATE"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
@@ -485,8 +485,8 @@ under the License.
         <attribute name="infoString" type="String" mode="IN" optional="true"/>
         <attribute name="newContactMechId" type="String" mode="IN" optional="true"/>
     </service>
-    <service name="deletePartyContactMech" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="deletePartyContactMech" auth="true">
+    <service name="deletePartyContactMech" engine="groovy"
+             location="component://party/groovyScripts/contact/PartyContactMechServices.groovy" invoke="deletePartyContactMech" auth="true">
         <description>Delete a PartyContactMech</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="DELETE"/>
         <attribute name="partyId" type="String" mode="IN" optional="true"/>
