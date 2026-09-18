@@ -24,10 +24,12 @@ import org.apache.ofbiz.entity.GenericValue
 /**
  * Create a PartyContactMech
  */
-def createPartyContactMech() {
+Map createPartyContactMech() {
     Map result = success()
-    if (parameters.partyId) parameters.partyId = userLogin.partyId
-    GenericValue newValue = makeValue(PartyContactMech, parameters)
+    if (!parameters.partyId) {
+        parameters.partyId = userLogin.partyId
+    }
+    GenericValue newValue = makeValue('PartyContactMech', parameters)
 
     //check if the contact mech infostring is already existing if so, do not create a new one
     List<GenericValue> partyContactMechs = from('PartyAndContactMech')
@@ -36,15 +38,15 @@ def createPartyContactMech() {
                     contactMechTypeId: parameters.contactMechTypeId)
             .filterByDate()
             .queryList()
-    partyContactMechs.each() {
+    for (partyContactMech in partyContactMechs) {
         GenericValue contactMechType = from('ContactMechType')
-                .where(contactMechTypeId: it.contactMechTypeId)
+                .where(contactMechTypeId: partyContactMech.contactMechTypeId)
                 .cache().queryOne()
         if (contactMechType.hasTable == 'N') {
-            parameters.infoString == it.infoString
-            logInfo "ContactMechId: ${it.contactMechId} already exists with value: " +
-                    "${it.infoString} for party: ${it.partyId} and ContactMechTypeId: ${it.contactMechTypeId}"
-            result.contactMechId = it.contactMechId
+            parameters.infoString == partyContactMech.infoString
+            logInfo "ContactMechId: ${partyContactMech.contactMechId} already exists with value: " +
+                    "${partyContactMech.infoString} for party: ${partyContactMech.partyId} and ContactMechTypeId: ${partyContactMech.contactMechTypeId}"
+            result.contactMechId = partyContactMech.contactMechId
             return result
         }
     }
@@ -63,19 +65,21 @@ def createPartyContactMech() {
 /**
  * Update a PartyContactMech
  */
-def updatePartyContactMech() {
+Map updatePartyContactMech() {
     Map result = success()
-    if (parameters.partyId) parameters.partyId = userLogin.partyId
+    if (!parameters.partyId) {
+        parameters.partyId = userLogin.partyId
+    }
     GenericValue partyContactMechMap = makeValue('PartyContactMech').setPKFields(parameters)
     GenericValue oldPartyContactMech = from('PartyContactMech')
             .where(partyContactMechMap)
             .filterByDate()
             .queryFirst()
-    if (oldPartyContactMech) {
-        return error(UtilProperties.getMessage('PartyUiLabels', 'PartyCannotUpdateContactBecauseNotWithSpecifiedParty', locale)
+    if (!oldPartyContactMech) {
+        return error(UtilProperties.getMessage('PartyUiLabels', 'PartyCannotUpdateContactBecauseNotWithSpecifiedParty', locale))
     }
     GenericValue newPartyContactMech = makeValue("PartyContactMech", parameters)
-    if (! parameters.newContactMechId) {
+    if (!parameters.newContactMechId) {
         Map serviceResult = run service: 'updateContactMech', with: parameters
         newPartyContactMech.contactMechId = serviceResult.contactMechId
     } else {
@@ -94,17 +98,17 @@ def updatePartyContactMech() {
                 .where(partyContactMechMap)
                 .filterByDate()
                 .queryList()
-        partyContactMechPurposes.each() {
-            GenericValue newPartyContactMechPurpose = [*:it]
-            it.thruDate = newPartyContactMech.fromDate
-            it.store()
+        for (partyContactMechPurpose in partyContactMechPurposes) {
+            GenericValue newPartyContactMechPurpose = [*: partyContactMechPurpose]
+            partyContactMechPurpose.thruDate = newPartyContactMech.fromDate
+            partyContactMechPurpose.store()
 
             partyContactMechPurpose.contactMechId = newPartyContactMech.contactMechId
             if (from('PartyContactMechPurpose')
-                    .where(partyId: it.partyId,
-                            contactMechPurposeTypeId: it.contactMechPurposeTypeId,
+                    .where(partyId: partyContactMechPurpose.partyId,
+                            contactMechPurposeTypeId: partyContactMechPurpose.contactMechPurposeTypeId,
                             contactMechId: newPartyContactMechPurpose.contactMechId)
-                .queryCount() == 0) {
+                    .queryCount() == 0) {
                 newPartyContactMechPurpose.create()
             }
         }
@@ -117,7 +121,7 @@ def updatePartyContactMech() {
             oldPartyContactMech.thruDate = null
         }
         oldPartyContactMech.store()
-        logInfo "Setting id to result: ${partyContactMech.contactMechId}"
+        logInfo "Setting id to result: ${oldPartyContactMech.contactMechId}"
         result.contactMechId = oldPartyContactMech.contactMechId
     }
     return result
@@ -126,127 +130,87 @@ def updatePartyContactMech() {
 /**
  * Delete a PartyContactMech
  */
-def deletePartyContactMech() {
-    if (parameters.partyId) parameters.partyId = userLogin.partyId
+Map deletePartyContactMech() {
+    if (!parameters.partyId) {
+        parameters.partyId = userLogin.partyId
+    }
     GenericValue partyContactMechMap = makeValue('PartyContactMech').setPKFields(parameters)
     GenericValue partyContactMech = from('PartyContactMech')
             .where(partyContactMechMap)
             .filterByDate()
             .queryFirst()
     if (partyContactMech) {
-        return error(UtilProperties.getMessage('PartyUiLabels', 'PartyContactMechNotFoundCannotDelete', locale)
+        return error(UtilProperties.getMessage('PartyUiLabels', 'PartyContactMechNotFoundCannotDelete', locale))
     }
     partyContactMech.thruDate = UtilDateTime.nowTimestamp()
     partyContactMech.store()
     return success()
 }
+
+Map createPartyPostalAddress() {
+    if (!parameters.partyId) {
+        parameters.partyId = userLogin.partyId
+    }
+    if (parameters.latitude && parameters.longitude) {
+        Map geoRes = run service: 'createGeoPoint', with: parameters
+        parameters.geoPointId = geoRes.geoPointId
+    }
+    Map postalAddrRes = run service: 'createPostalAddress', with : parameters
+    run service : 'createPartyContactMech', with : [*: parameters,
+                                                    contactMechId: postalAddrRes.contactMechId,
+                                                    contactMechTypeId: 'POSTAL_ADDRESS'
+    ]
+    return success(contactMechId: postalAddrRes.contactMechId)
+}
+
+Map updatePartyPostalAddress() {
+    GenericValue newPartyContactMech = makeValue('PartyContactMech', parameters)
+    if (!parameters.partyId) {
+        parameters.partyId = userLogin.partyId
+    }
+    if (parameters.latitude && parameters.longitude) {
+        Map geoRes = run service: 'createGeoPoint', with: parameters
+        parameters.geoPointId = geoRes.geoPointId
+    }
+    Map updateRes = run service: 'updatePostalAddress', with: [parameters]
+    newPartyContactMech.contactMechId = updateRes.contactMechId
+    logInfo "Copied id to updatePartyContactMechMap: ${newPartyContactMech.contactMechId }"
+
+    run service: 'updatePartyContactMech', with: [*:parameters,
+                                                  contactMechId: newPartyContactMech.contactMechId,
+                                                  contactMechTypeId: 'POSTAL_ADDRESS']
+    return success(contactMechId: newPartyContactMech.contactMechId)
+}
+
+
+Map createPartyTelecomNumber() {
+    if (!parameters.partyId) {
+        parameters.partyId = userLogin.partyId
+    }
+    Map postalAddrRes = run service: 'createTelecomNumber', with : parameters
+    run service : 'createPartyContactMech', with : [*: parameters,
+                                                    contactMechId: postalAddrRes.contactMechId,
+                                                    contactMechTypeId: 'TELECOM_NUMBER'
+    ]
+    return success(contactMechId: postalAddrRes.contactMechId)
+}
+
+Map updatePartyTelecomNumber() {
+    GenericValue newPartyContactMech = makeValue('PartyContactMech', parameters)
+    if (!parameters.partyId) {
+        parameters.partyId = userLogin.partyId
+    }
+    Map updateRes = run service: 'updateTelecomNumber', with: [parameters]
+    newPartyContactMech.contactMechId = updateRes.contactMechId
+    logInfo "Copied id to updatePartyContactMechMap: ${newPartyContactMech.contactMechId }"
+
+    run service: 'updatePartyContactMech', with: [*:parameters,
+                                                  contactMechId: newPartyContactMech.contactMechId,
+                                                  contactMechTypeId: 'TELECOM_NUMBER']
+    return success(contactMechId: newPartyContactMech.contactMechId)
+}
+
 /*
-    <simple-method method-name="createPartyPostalAddress" short-description="Create a PostalAddress for party">
-        <if-empty field="parameters.partyId">
-            <set field="parameters.partyId" from-field="userLogin.partyId"/>
-        </if-empty>
-        <if-not-empty field="parameters.latitude">
-            <if-not-empty field="parameters.longitude">
-                <set-service-fields service-name="createGeoPoint" map="parameters" to-map="createGeoPointMap"/>
-                <call-service in-map-name="createGeoPointMap" service-name="createGeoPoint">
-                    <result-to-field result-name="geoPointId" field="parameters.geoPointId"/>
-                </call-service>
-                <check-errors/>
-            </if-not-empty>
-        </if-not-empty>
-        <set-service-fields service-name="createPostalAddress" map="parameters" to-map="createPostalAddressMap"/>
-        <call-service in-map-name="createPostalAddressMap" service-name="createPostalAddress">
-            <default-message resource="PartyUiLabels" property="PartyPostalAddressSuccessfullyCreated"/>
-            <result-to-field result-name="contactMechId" field="newPartyContactMech.contactMechId"/>
-        </call-service>
-        <check-errors/>
-        <set-service-fields service-name="createPartyContactMech" map="parameters" to-map="createPartyContactMechMap"/>
-        <set field="createPartyContactMechMap.contactMechId" from-field="newPartyContactMech.contactMechId"/>
-        <set field="createPartyContactMechMap.contactMechTypeId" value="POSTAL_ADDRESS"/>
-        <call-service service-name="createPartyContactMech" in-map-name="createPartyContactMechMap" break-on-error="true">
-            <default-message resource="PartyUiLabels" property="PartyPostalAddressSuccessfullyCreated"/>
-        </call-service>
-        <field-to-request field="newPartyContactMech.contactMechId" request-name="contactMechId"/>
-        <field-to-result field="newPartyContactMech.contactMechId" result-name="contactMechId"/>
-    </simple-method>
-    <simple-method method-name="updatePartyPostalAddress" short-description="Update a PostalAddress for party">
-        <make-value entity-name="PartyContactMech" value-field="newPartyContactMech"/>
-        <if-empty field="parameters.partyId">
-            <set field="parameters.partyId" from-field="userLogin.partyId"/>
-        </if-empty>
-        <if-not-empty field="parameters.latitude">
-            <if-not-empty field="parameters.longitude">
-                <set-service-fields service-name="createGeoPoint" map="parameters" to-map="createGeoPointMap"/>
-                <call-service in-map-name="createGeoPointMap" service-name="createGeoPoint">
-                    <result-to-field result-name="geoPointId" field="parameters.geoPointId"/>
-                </call-service>
-                <check-errors/>
-            </if-not-empty>
-        </if-not-empty>
-        <set-service-fields service-name="updatePostalAddress" map="parameters" to-map="updatePostalAddressMap"/>
-        <call-service in-map-name="updatePostalAddressMap" service-name="updatePostalAddress">
-            <default-message resource="PartyUiLabels" property="PartyPostalAddressSuccessfullyUpdated"/>
-            <result-to-field result-name="contactMechId" field="newPartyContactMech.contactMechId"/>
-        </call-service>
-        <set-service-fields service-name="updatePartyContactMech" map="parameters" to-map="updatePartyContactMechMap"/>
-        <set field="updatePartyContactMechMap.newContactMechId" from-field="newPartyContactMech.contactMechId"/>
-        <set field="updatePartyContactMechMap.contactMechTypeId" value="POSTAL_ADDRESS"/>
-        <log level="info" message="Copied id to updatePartyContactMechMap: ${updatePartyContactMechMap.newContactMechId}"/>
-        <call-service service-name="updatePartyContactMech" in-map-name="updatePartyContactMechMap">
-            <default-message resource="PartyUiLabels" property="PartyPostalAddressSuccessfullyUpdated"/>
-        </call-service>
-        <field-to-request field="newPartyContactMech.contactMechId" request-name="contactMechId"/>
-        <field-to-result field="newPartyContactMech.contactMechId" result-name="contactMechId"/>
-    </simple-method>
-
-    <simple-method method-name="createPartyTelecomNumber" short-description="Create a TelecomNumber for party">
-        <if-empty field="parameters.partyId">
-            <set field="parameters.partyId" from-field="userLogin.partyId"/>
-        </if-empty>
-
-        <log level="info" message="Creating telecom number"/>
-        <set-service-fields service-name="createTelecomNumber" map="parameters" to-map="createTelecomNumberMap"/>
-        <call-service in-map-name="createTelecomNumberMap" service-name="createTelecomNumber">
-            <default-message resource="PartyUiLabels" property="PartyTelecomNumberSuccessfullyCreated"/>
-            <result-to-field result-name="contactMechId" field="newPartyContactMech.contactMechId"/>
-        </call-service>
-
-        <set-service-fields service-name="createPartyContactMech" map="parameters" to-map="createPartyContactMechMap"/>
-        <set field="createPartyContactMechMap.contactMechId" from-field="newPartyContactMech.contactMechId"/>
-        <set field="createPartyContactMechMap.contactMechTypeId" value="TELECOM_NUMBER"/>
-        <log level="info" message="Copied id to createPartyContactMechMap: ${createPartyContactMechMap.contactMechId}"/>
-
-        <call-service service-name="createPartyContactMech" in-map-name="createPartyContactMechMap" break-on-error="true">
-            <default-message resource="PartyUiLabels" property="PartyTelecomNumberSuccessfullyCreated"/>
-        </call-service>
-        <field-to-request field="newPartyContactMech.contactMechId" request-name="contactMechId"/>
-        <field-to-result field="newPartyContactMech.contactMechId" result-name="contactMechId"/>
-    </simple-method>
-
-    <simple-method method-name="updatePartyTelecomNumber" short-description="Update a TelecomNumber for party">
-        <make-value entity-name="PartyContactMech" value-field="newPartyContactMech"/>
-        <if-empty field="parameters.partyId">
-            <set field="parameters.partyId" from-field="userLogin.partyId"/>
-        </if-empty>
-
-        <set-service-fields service-name="updateTelecomNumber" map="parameters" to-map="updateTelecomNumberMap"/>
-        <call-service service-name="updateTelecomNumber" in-map-name="updateTelecomNumberMap">
-            <default-message resource="PartyUiLabels" property="PartyTelecomNumberSuccessfullyUpdated"/>
-            <result-to-field result-name="contactMechId" field="newPartyContactMech.contactMechId"/>
-        </call-service>
-
-        <set-service-fields service-name="updatePartyContactMech" map="parameters" to-map="updatePartyContactMechMap"/>
-        <set field="updatePartyContactMechMap.newContactMechId" from-field="newPartyContactMech.contactMechId"/>
-        <set field="updatePartyContactMechMap.contactMechTypeId" value="TELECOM_NUMBER"/>
-        <log level="info" message="Copied id to updatePartyContactMechMap: ${updatePartyContactMechMap.newContactMechId}"/>
-
-        <call-service in-map-name="updatePartyContactMechMap" service-name="updatePartyContactMech">
-            <default-message resource="PartyUiLabels" property="PartyTelecomNumberSuccessfullyUpdated"/>
-        </call-service>
-        <log level="info" message="Setting result id: ${newPartyContactMech.contactMechId}"/>
-        <field-to-request field="newPartyContactMech.contactMechId" request-name="contactMechId"/>
-        <field-to-result field="newPartyContactMech.contactMechId" result-name="contactMechId"/>
-    </simple-method>
 
     <simple-method method-name="createPartyEmailAddress" short-description="Create an email address for party">
         <if-empty field="parameters.partyId">
