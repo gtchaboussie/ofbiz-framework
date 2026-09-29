@@ -27,6 +27,10 @@ import org.apache.ofbiz.testtools.JupiterTestHelper
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
 
+/**
+ * ./gradlew "ofbiz -t component=party -t suitename=partycontactmechtests -t case=partyContactMech-tests"
+ * ./gradlew "ofbiz -t component=party -t suitename=partycontactmechtests"
+ */
 @JunitJupiterTest
 class PartyContactMechTests implements JupiterTestHelper {
 

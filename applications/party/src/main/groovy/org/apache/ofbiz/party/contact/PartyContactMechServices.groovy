@@ -38,7 +38,10 @@ Map createPartyContactMech() {
             .filterByDate()
             .queryList()
     GenericValue alreadyExistingCMech = partyAndContactMechs.find { partyAndContactMech ->
-        GenericValue contactMechType = partyAndContactMech.getRelatedOne('ContactMechType', true) // TODO TESTER
+        GenericValue contactMechType = from('ContactMechType')
+                .where("contactMechTypeId", partyAndContactMech.contactMechTypeId)
+                .cache()
+                .queryOne()
         return (contactMechType.hasTable == 'N'
                 && parameters.infoString == partyAndContactMech.infoString
                 && parameters.contactMechTypeId == partyAndContactMech.contactMechTypeId)
@@ -222,7 +225,6 @@ Map updatePartyPostalAddress() {
 Map createPartyTelecomNumber() {
     Map result = success()
     Map newPartyContactMech = [:]
-
     parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     logInfo('Creating telecom number')
@@ -247,7 +249,6 @@ Map createPartyTelecomNumber() {
 
 Map updatePartyTelecomNumber() {
     Map result = success()
-
     GenericValue newPartyContactMech = makeValue('PartyContactMech')
     parameters.partyId = parameters.partyId ?: userLogin.partyId
 
@@ -274,21 +275,17 @@ Map updatePartyTelecomNumber() {
 
 Map createPartyEmailAddress() {
     Map result = success()
-
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-
-    // if-validate-method isEmail : le <else> devient le cas 'non valide'
-    if (!UtilValidate.isEmail(parameters.emailAddress)) {
+    if (!UtilValidate.isEmail(parameters.emailAddress as String)) {
         return error(label('PartyUiLabels', 'PartyEmailAddressNotFormattedCorrectly'))
     }
 
-    // if e-mail address already exists simply return
     EntityCondition condition = EntityCondition.makeCondition([
             EntityCondition.makeCondition('partyId', parameters.partyId),
             EntityCondition.makeCondition('contactMechTypeId', 'EMAIL_ADDRESS'),
-            EntityCondition.makeCondition(EntityFunction.UPPER_FIELD('infoString'),
+            EntityCondition.makeCondition(EntityFunction.upper('infoString'),
                     EntityOperator.EQUALS,
-                    EntityFunction.UPPER(parameters.emailAddress))
+                    EntityFunction.upper(parameters.emailAddress))
     ], EntityOperator.AND)
     List partyAndContactMechs = from('PartyAndContactMech').where(condition).queryList()
     partyAndContactMechs = EntityUtil.filterByDate(partyAndContactMechs)
@@ -312,7 +309,6 @@ Map createPartyEmailAddress() {
 
 Map updatePartyEmailAddress() {
     Map result = success()
-
     parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     if (!UtilValidate.isEmail(parameters.emailAddress)) {
@@ -372,80 +368,27 @@ Map findPartyFromEmailAddress() {
 
 Map findPartyFromTelephone() {
     Map result = success()
-
     List contactMechs = from('PartyAndContactMech')
             .where('contactMechTypeId', 'TELECOM_NUMBER')
             .filterByDate()
             .queryList()
-
-    String dash = '-'
-    String emptyString = ''
-    String inputTelno = parameters.telno.replace(dash, emptyString)
-    String partyId = null
-    GenericValue contactMechRes = null // déclaré hors boucle : minilang conserve la dernière valeur itérée
-    for (contactMech in contactMechs) {
-        String telno = (contactMech.tnContactNumber ?: '').replace(dash, emptyString)
-        if (inputTelno == telno) {
-            partyId = contactMech.partyId
-        }
-        telno = "${contactMech.tnAreaCode ?: ''}${telno}"
-        if (inputTelno == telno) {
-            partyId = contactMech.partyId
-        }
-        telno = "${contactMech.tnCountryCode ?: ''}${telno}"
-        if (inputTelno == telno) {
-            partyId = contactMech.partyId
-        }
-        telno = "+${telno}"
-        if (inputTelno == telno) {
-            partyId = contactMech.partyId
-        }
+    boolean complete = parameters.complete == 'Y'
+    String inputTelno = complete ? parameters.telno : parameters.telno.replace('-', '')
+    GenericValue relevantContactMech = contactMechs.find { contactMech ->
+        String phoneNb = complete ? (contactMech.tnContactNumber ?: '' as String) : (contactMech.tnContactNumber ?: '' as String).replace('-', '')
+        String tnAreaCode = contactMech.tnAreaCode ?: ''
+        return inputTelno == phoneNb ||
+                inputTelno == "$tnAreaCode$phoneNb" ||
+                inputTelno == "${contactMech.tnCountryCode ?: ''}$tnAreaCode$phoneNb" ||
+                inputTelno == "+${contactMech.tnCountryCode ?: ''}$tnAreaCode$phoneNb"
     }
-    if (partyId) {
-        result.partyId = partyId
-        result.contactMechId = contactMechRes.contactMechId
+    if (relevantContactMech) {
+        result.partyId = relevantContactMech.partyId
+        result.contactMechId = relevantContactMech.contactMechId
     }
     return result
 }
 
-Map findPartyFromTelephoneComplete() {
-    Map result = success()
-
-    List contactMechs = from('PartyAndContactMech')
-            .where('contactMechTypeId', 'TELECOM_NUMBER')
-            .filterByDate()
-            .queryList()
-
-    String inputTelno = parameters.telno
-    String partyId = null
-    GenericValue contactMechRes = null // idem : dernière valeur itérée conservée
-    for (contactMech in contactMechs) {
-        String telno = contactMech.tnContactNumber
-        // telno = contactMech.tnContactNumber.replace(dash, emptyString)   (commenté dans l'original)
-        if (inputTelno == telno) {
-            partyId = contactMech.partyId
-        }
-        telno = "${contactMech.tnAreaCode ?: ''}${telno ?: ''}"
-        if (inputTelno == telno) {
-            partyId = contactMech.partyId
-        }
-        telno = "${contactMech.tnCountryCode ?: ''}${telno}"
-        if (inputTelno == telno) {
-            partyId = contactMech.partyId
-        }
-        telno = "+${telno}"
-        if (inputTelno == telno) {
-            partyId = contactMech.partyId
-        }
-    }
-    if (partyId) {
-        result.partyId = partyId
-        result.contactMechId = contactMechRes.contactMechId
-    }
-    return result
-}
-
-// login-required='false' => auth='false' dans la définition du service
 Map createPostalAddressAndPurposes() {
     Map result = success()
 
@@ -522,7 +465,6 @@ Map createPostalAddressAndPurposes() {
     return result
 }
 
-// login-required='false' => auth='false' dans la définition du service
 Map updatePostalAddressAndPurposes() {
     Map result = success()
 
@@ -661,7 +603,6 @@ Map updateContactMechAndPurposes() {
     return result
 }
 
-// login-required='false' => auth='false' dans la définition du service
 Map createUpdatePartyEmailAddress() {
     Map result = success()
 
@@ -689,7 +630,6 @@ Map createUpdatePartyEmailAddress() {
     return result
 }
 
-// login-required='false' => auth='false' dans la définition du service
 Map createUpdatePartyTelecomNumber() {
     Map result = success()
 
@@ -713,7 +653,6 @@ Map createUpdatePartyTelecomNumber() {
     return result
 }
 
-// login-required='false' => auth='false' dans la définition du service
 Map createUpdatePartyPostalAddress() {
     Map result = success()
 

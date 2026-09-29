@@ -115,7 +115,7 @@ under the License.
         <attribute name="partyId" type="String" mode="OUT" optional="false"/>
     </service>
 
-    <service name="createPartyContactMechs" engine="simple" default-entity-name="createPartyContactMechs"
+    <service name="createPartyContactMechs" engine="simple" default-entity-name="PartyContactMech"
             location="component://party/minilang/party/PartySimpleMethods.xml" invoke="createPartyContactMechs">
         <description>Create Party Group Role and Contact Mechs</description>
         <attribute name="partyGroupContext" type="Map" mode="IN" optional="true"/>
@@ -453,8 +453,8 @@ under the License.
     </service>
 
     <!-- ContactMech services -->
-    <service name="createPartyContactMech" engine="groovy"
-            location="component://party/groovyScripts/contact/PartyContactMechServices.groovy" invoke="createPartyContactMech" auth="true">
+    <service name="createPartyContactMech" engine="groovy" invoke="createPartyContactMech" auth="true"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy">
         <description>Create a PartyContactMech</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="CREATE"/>
         <auto-attributes entity-name="ContactMech" include="nonpk" mode="IN" optional="true"/>
@@ -467,8 +467,8 @@ under the License.
             </type-validate>
         </attribute>
     </service>
-    <service name="updatePartyContactMech" engine="groovy"
-             location="component://party/groovyScripts/contact/PartyContactMechServices.groovy" invoke="updatePartyContactMech" auth="true">
+    <service name="updatePartyContactMech" engine="groovy" invoke="updatePartyContactMech" auth="true"
+        location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy">
         <description>Update a PartyContactMech</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="UPDATE"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
@@ -485,8 +485,8 @@ under the License.
         <attribute name="infoString" type="String" mode="IN" optional="true"/>
         <attribute name="newContactMechId" type="String" mode="IN" optional="true"/>
     </service>
-    <service name="deletePartyContactMech" engine="groovy"
-             location="component://party/groovyScripts/contact/PartyContactMechServices.groovy" invoke="deletePartyContactMech" auth="true">
+    <service name="deletePartyContactMech" engine="groovy" invoke="deletePartyContactMech" auth="true"
+        location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy">
         <description>Delete a PartyContactMech</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="DELETE"/>
         <attribute name="partyId" type="String" mode="IN" optional="true"/>
@@ -497,8 +497,8 @@ under the License.
         </attribute>
     </service>
     <!-- Party ContachMech reverse find -->
-    <service name="findPartyFromEmailAddress" engine="simple"
-        location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="findPartyFromEmailAddress" auth="true">
+    <service name="findPartyFromEmailAddress" engine="groovy"
+        location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="findPartyFromEmailAddress" auth="true">
         <description>Find the partyId/contactMechId for a specific email address, if not found do not return a value</description>
         <attribute name="address" type="String" mode="IN" optional="false">
             <type-validate>
@@ -511,19 +511,20 @@ under the License.
         <attribute name="partyId" type="String" mode="OUT" optional="true"/>
         <attribute name="contactMechId" type="String" mode="OUT" optional="true"/>
     </service>
-    <service name="findPartyFromTelephone" engine="simple"
-        location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="findPartyFromTelephone" auth="true">
+    <service name="findPartyFromTelephone" engine="groovy"
+        location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="findPartyFromTelephone" auth="true">
         <description>Find the partyId/contactMechId for a specific telephone number, if not found do not return a value</description>
         <attribute name="telno" type="String" mode="IN" optional="false">
             <type-validate>
                 <fail-property resource="PartyErrorUiLabels" property="PartyRequiredFieldMissingTelno"/>
             </type-validate>
         </attribute>
+        <attribute name="complete" type="String" mode="IN" optional="false" default-value="N"/>
         <attribute name="partyId" type="String" mode="OUT" optional="true"/>
         <attribute name="contactMechId" type="String" mode="OUT" optional="true"/>
     </service>
-    <service name="findPartyFromTelephoneComplete" engine="simple"
-        location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="findPartyFromTelephoneComplete" auth="true">
+    <service name="findPartyFromTelephoneComplete" engine="groovy"
+        location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="findPartyFromTelephone" auth="true">
         <description>
             Find the partyId/contactMechId for a specific telephone number, if not found do not return a value.
             Same than above but keep the number complete internally.
@@ -533,11 +534,12 @@ under the License.
                 <fail-property resource="PartyErrorUiLabels" property="PartyRequiredFieldMissingTelno"/>
             </type-validate>
         </attribute>
+        <attribute name="complete" type="String" mode="IN" optional="false" default-value="Y"/>
         <attribute name="partyId" type="String" mode="OUT" optional="true"/>
         <attribute name="contactMechId" type="String" mode="OUT" optional="true"/>
     </service>
-    <service name="createPartyPostalAddress" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="createPartyPostalAddress" auth="true">
+    <service name="createPartyPostalAddress" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="createPartyPostalAddress" auth="true">
         <description>Create a Postal Address</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="CREATE"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
@@ -555,8 +557,8 @@ under the License.
         <override name="city" optional="false"/>
         <override name="postalCode" optional="false"/>
     </service>
-    <service name="updatePartyPostalAddress" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="updatePartyPostalAddress" auth="true">
+    <service name="updatePartyPostalAddress" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="updatePartyPostalAddress" auth="true">
         <description>Update a Postal Address</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="UPDATE"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
@@ -567,8 +569,8 @@ under the License.
         <override name="city" optional="false"/>
         <override name="postalCode" optional="false"/>
     </service>
-    <service name="createPartyTelecomNumber" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="createPartyTelecomNumber" auth="true">
+    <service name="createPartyTelecomNumber" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="createPartyTelecomNumber" auth="true">
         <description>Create a Telecommunications Number</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="CREATE"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
@@ -577,8 +579,8 @@ under the License.
         <attribute name="contactMechId" type="String" mode="OUT" optional="false"/>
         <override name="contactNumber" optional="false"/>
     </service>
-    <service name="updatePartyTelecomNumber" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="updatePartyTelecomNumber" auth="true">
+    <service name="updatePartyTelecomNumber" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="updatePartyTelecomNumber" auth="true">
         <description>Update a Telecommunications Number</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="UPDATE"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
@@ -586,8 +588,8 @@ under the License.
         <attribute name="contactMechId" type="String" mode="INOUT" optional="false"/>
         <override name="contactNumber" optional="false"/>
     </service>
-    <service name="createPartyEmailAddress" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="createPartyEmailAddress" auth="true">
+    <service name="createPartyEmailAddress" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="createPartyEmailAddress" auth="true">
         <description>Create an Email Address</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="CREATE"/>
         <auto-attributes entity-name="ContactMech" include="nonpk" mode="IN" optional="true"/>
@@ -596,8 +598,8 @@ under the License.
         <attribute name="contactMechId" type="String" mode="INOUT" optional="true"/>
         <attribute name="emailAddress" type="String" mode="IN" optional="false"/>
     </service>
-    <service name="updatePartyEmailAddress" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="updatePartyEmailAddress" auth="true">
+    <service name="updatePartyEmailAddress" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="updatePartyEmailAddress" auth="true">
         <description>Update an Email Address</description>
         <permission-service service-name="partyContactMechPermissionCheck" main-action="UPDATE"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
@@ -1371,14 +1373,16 @@ under the License.
         <attribute name="partyIdFrom" type="String" mode="IN" optional="true"/>
         <attribute name="partyIdTo" type="String" mode="IN" optional="true"/>
     </service>
-    <service name="createPostalAddressAndPurposes" engine="simple" location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="createPostalAddressAndPurposes">
+    <service name="createPostalAddressAndPurposes" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="createPostalAddressAndPurposes">
         <description>Create postal address, purposes and set them defaults</description>
         <implements service="createPartyPostalAddress"/>
         <attribute name="setShippingPurpose" type="String" mode="IN" optional="true"/>
         <attribute name="setBillingPurpose" type="String" mode="IN" optional="true"/>
         <attribute name="productStoreId" type="String" mode="IN" optional="true"/>
     </service>
-    <service name="updatePostalAddressAndPurposes" engine="simple" location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="updatePostalAddressAndPurposes">
+    <service name="updatePostalAddressAndPurposes" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="updatePostalAddressAndPurposes">
         <description>Update postal address, purposes and set them defaults. The setShippingPurpose and setBillingPurpose enable the service to create purposes for PostalAddress and make them default addresses of party</description>
         <implements service="updatePartyPostalAddress"/>
         <attribute name="setShippingPurpose" type="String" mode="IN" optional="true"/>
@@ -1386,14 +1390,15 @@ under the License.
         <attribute name="productStoreId" type="String" mode="IN" optional="true"/>
         <override name="contactMechId" optional="false"/>
     </service>
-    <service name="updateContactMechAndPurposes" engine="simple" location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="updateContactMechAndPurposes">
+    <service name="updateContactMechAndPurposes" engine="groovy"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="updateContactMechAndPurposes">
         <description>Update postal address, telecom number and purposes. The setShippingPurpose and setBillingPurpose enable the service to create purposes for TelecomNumber</description>
         <implements service="updatePostalAddressAndPurposes"/>
         <auto-attributes entity-name="TelecomNumber" include="nonpk" mode="IN" optional="true"/>
         <attribute name="phoneContactMechId" type="String" mode="IN" optional="true"/>
     </service>
-    <service name="createUpdatePerson" engine="groovy" default-entity-name="Person"
-            location="component://party/src/main/groovy/org/apache/ofbiz/party/party/PartyServicesScript.groovy" invoke="createUpdatePerson" auth="false">
+    <service name="createUpdatePerson" engine="groovy" default-entity-name="Person" auth="false"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/party/PartyServicesScript.groovy" invoke="createUpdatePerson">
         <description>Create and Update a person</description>
         <auto-attributes mode="INOUT" include="pk" optional="true"/>
         <auto-attributes mode="IN" include="nonpk" optional="true"/>
@@ -1401,8 +1406,8 @@ under the License.
         <override name="firstName" optional="false"/>
         <override name="lastName" optional="false"/>
     </service>
-    <service name="createUpdatePartyTelecomNumber" engine="simple"
-            location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="createUpdatePartyTelecomNumber" auth="false">
+    <service name="createUpdatePartyTelecomNumber" engine="groovy" auth="false"
+            location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="createUpdatePartyTelecomNumber">
         <description>Create and Update telecom number</description>
         <attribute name="partyId" type="String" mode="IN" optional="false"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
@@ -1412,8 +1417,8 @@ under the License.
         <attribute name="roleTypeId" type="String" mode="IN" optional="true"/>
         <attribute name="contactMechId" type="String" mode="INOUT" optional="true"/>
     </service>
-    <service name="createUpdatePartyEmailAddress" engine="simple"
-        location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="createUpdatePartyEmailAddress" auth="false">
+    <service name="createUpdatePartyEmailAddress" engine="groovy" auth="false"
+        location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="createUpdatePartyEmailAddress">
         <description>Create and Update email address</description>
         <attribute name="partyId" type="String" mode="IN" optional="true"/>
         <attribute name="userLogin" type="org.apache.ofbiz.entity.GenericValue" mode="IN" optional="true"/>
@@ -1422,8 +1427,8 @@ under the License.
         <attribute name="contactMechId" type="String" mode="IN" optional="true"/>
         <attribute name="contactMechId" type="String" mode="OUT" optional="false"/>
     </service>
-    <service name="createUpdatePartyPostalAddress" engine="simple"
-        location="component://party/minilang/contact/PartyContactMechServices.xml" invoke="createUpdatePartyPostalAddress" auth="false">
+    <service name="createUpdatePartyPostalAddress" engine="groovy" auth="false"
+        location="component://party/src/main/groovy/org/apache/ofbiz/party/contact/PartyContactMechServices.groovy" invoke="createUpdatePartyPostalAddress">
         <description>Create or Update a postal address</description>
         <attribute name="partyId" type="String" mode="IN" optional="false"/>
         <auto-attributes entity-name="PartyContactMech" include="all" mode="IN" optional="true"/>
