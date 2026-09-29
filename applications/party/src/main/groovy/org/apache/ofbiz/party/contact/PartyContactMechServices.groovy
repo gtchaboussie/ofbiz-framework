@@ -31,9 +31,6 @@ import org.apache.ofbiz.entity.util.EntityUtilProperties
 import static org.apache.ofbiz.service.ServiceUtil.isSuccess
 
 Map createPartyContactMech() {
-    Map result = success()
-
-    GenericValue newValue = makeValue('PartyContactMech')
     if (!parameters.partyId) {
         parameters.partyId = userLogin.partyId
     }
@@ -43,22 +40,26 @@ Map createPartyContactMech() {
             .where('partyId', parameters.partyId)
             .filterByDate()
             .queryList()
-    for (GenericValue partyAndContactMech : partyAndContactMechs) {
-        GenericValue contactMechType = from('ContactMechType')
-                .where('contactMechTypeId', partyAndContactMech.contactMechTypeId)
-                .queryOne()
-        if ('N'.equals(contactMechType.hasTable)
+    GenericValue alreadyExistingCMech = partyAndContactMechs.find { partyAndContactMech ->
+        GenericValue contactMechType = partyAndContactMech.getRelatedOne('ContactMechType', true) // TODO TESTER
+        return ('N'.equals(contactMechType.hasTable)
                 && parameters.infoString == partyAndContactMech.infoString
-                && parameters.contactMechTypeId == partyAndContactMech.contactMechTypeId) {
-            logInfo("ContactMechId: ${partyAndContactMech.contactMechId}" +
-                    " already exists with value: ${partyAndContactMech.infoString} for party: ${parameters.partyId}" +
-                    " and ContactMechTypeId: ${partyAndContactMech.contactMechTypeId}")
-            result.contactMechId = partyAndContactMech.contactMechId
-            return result
-        }
+                && parameters.contactMechTypeId == partyAndContactMech.contactMechTypeId)
     }
-
-    if (!parameters.contactMechId) {
+    if (alreadyExistingCMech) {
+        logInfo("ContactMechId: ${alreadyExistingCMech.contactMechId}" +
+                " already exists with value: ${alreadyExistingCMech.infoString} for party: ${parameters.partyId}" +
+                " and ContactMechTypeId: ${alreadyExistingCMech.contactMechTypeId}")
+        return success(contactMechId: alreadyExistingCMech.contactMechId)
+    }
+    GenericValue newValue = makeValue('PartyContactMech')
+    newValue.setNonPKFields(parameters)
+    newValue.partyId = parameters.partyId
+    newValue.fromDate = UtilDateTime.nowTimestamp()
+    if (parameters.contactMechId) {
+        newValue.contactMechId = parameters.contactMechId
+        logInfo("Creating a PartyContactMech with id: ${parameters.contactMechId}")
+    } else {
         Map createContactMechResult = run service: 'createContactMech', with: [*: parameters]
         if (!isSuccess(createContactMechResult)) {
             return createContactMechResult
@@ -66,16 +67,9 @@ Map createPartyContactMech() {
         newValue.contactMechId = createContactMechResult.contactMechId
         logInfo('ContactMech created')
         logInfo("Creating a PartyContactMech with id: ${newValue.contactMechId}")
-    } else {
-        newValue.contactMechId = parameters.contactMechId
-        logInfo("Creating a PartyContactMech with id: ${parameters.contactMechId}")
     }
-    newValue.partyId = parameters.partyId
-    result.contactMechId = newValue.contactMechId
-    newValue.setNonPKFields(parameters)
-    newValue.fromDate = UtilDateTime.nowTimestamp()
     newValue.create()
-    return result
+    return success(contactMechId: newValue.contactMechId)
 }
 
 Map updatePartyContactMech() {
