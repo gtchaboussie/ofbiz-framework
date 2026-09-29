@@ -406,7 +406,7 @@ Map findPartyFromTelephone() {
     String emptyString = ''
     String inputTelno = parameters.telno.replace(dash, emptyString)
     String partyId = null
-    GenericValue contactMech = null // déclaré hors boucle : minilang conserve la dernière valeur itérée
+    GenericValue contactMechRes = null // déclaré hors boucle : minilang conserve la dernière valeur itérée
     for (contactMech in contactMechs) {
         String telno = (contactMech.tnContactNumber ?: '').replace(dash, emptyString)
         if (inputTelno == telno) {
@@ -427,7 +427,7 @@ Map findPartyFromTelephone() {
     }
     if (partyId) {
         result.partyId = partyId
-        result.contactMechId = contactMech.contactMechId
+        result.contactMechId = contactMechRes.contactMechId
     }
     return result
 }
@@ -442,7 +442,7 @@ Map findPartyFromTelephoneComplete() {
 
     String inputTelno = parameters.telno
     String partyId = null
-    GenericValue contactMech = null // idem : dernière valeur itérée conservée
+    GenericValue contactMechRes = null // idem : dernière valeur itérée conservée
     for (contactMech in contactMechs) {
         String telno = contactMech.tnContactNumber
         // telno = contactMech.tnContactNumber.replace(dash, emptyString)   (commenté dans l'original)
@@ -464,7 +464,7 @@ Map findPartyFromTelephoneComplete() {
     }
     if (partyId) {
         result.partyId = partyId
-        result.contactMechId = contactMech.contactMechId
+        result.contactMechId = contactMechRes.contactMechId
     }
     return result
 }
