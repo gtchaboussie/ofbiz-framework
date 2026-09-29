@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.ofbiz.party.contact
+
+import static org.apache.ofbiz.service.ServiceUtil.isSuccess
 
 import org.apache.ofbiz.base.util.UtilDateTime
 import org.apache.ofbiz.base.util.UtilValidate
@@ -28,12 +29,8 @@ import org.apache.ofbiz.entity.condition.EntityOperator
 import org.apache.ofbiz.entity.util.EntityUtil
 import org.apache.ofbiz.entity.util.EntityUtilProperties
 
-import static org.apache.ofbiz.service.ServiceUtil.isSuccess
-
 Map createPartyContactMech() {
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     // check if the contact mech infostring is already existing if so, do not create a new one
     List partyAndContactMechs = from('PartyAndContactMech')
@@ -42,7 +39,7 @@ Map createPartyContactMech() {
             .queryList()
     GenericValue alreadyExistingCMech = partyAndContactMechs.find { partyAndContactMech ->
         GenericValue contactMechType = partyAndContactMech.getRelatedOne('ContactMechType', true) // TODO TESTER
-        return ('N'.equals(contactMechType.hasTable)
+        return (contactMechType.hasTable == 'N'
                 && parameters.infoString == partyAndContactMech.infoString
                 && parameters.contactMechTypeId == partyAndContactMech.contactMechTypeId)
     }
@@ -74,10 +71,7 @@ Map createPartyContactMech() {
 
 Map updatePartyContactMech() {
     Map result = success()
-
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     GenericValue partyContactMechMap = makeValue('PartyContactMech')
     partyContactMechMap.setPKFields(parameters)
@@ -91,7 +85,10 @@ Map updatePartyContactMech() {
     GenericValue newPartyContactMech = (GenericValue) partyContactMech.clone()
 
     // If we already have a new contactMechId don't update ContactMech
-    if (!parameters.newContactMechId) {
+    if (parameters.newContactMechId) {
+        newPartyContactMech.contactMechId = parameters.newContactMechId
+        logInfo("Using supplied new contact mech id: ${newPartyContactMech.contactMechId}")
+    } else {
         Map updateContactMechResult = run service: 'updateContactMech', with: [*: parameters]
         if (!isSuccess(updateContactMechResult)) {
             return updateContactMechResult
@@ -99,9 +96,6 @@ Map updatePartyContactMech() {
         // default-message PartyContactMechanismSuccessfullyUpdated
         result.successMessage = label('PartyUiLabels', 'PartyContactMechanismSuccessfullyUpdated')
         newPartyContactMech.contactMechId = updateContactMechResult.contactMechId
-    } else {
-        newPartyContactMech.contactMechId = parameters.newContactMechId
-        logInfo("Using supplied new contact mech id: ${newPartyContactMech.contactMechId}")
     }
 
     if (newPartyContactMech.contactMechId != parameters.contactMechId) {
@@ -144,12 +138,7 @@ Map updatePartyContactMech() {
 }
 
 Map deletePartyContactMech() {
-    Map result = success()
-
-    GenericValue newPartyContactMech = makeValue('PartyContactMech')
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     GenericValue partyContactMechMap = makeValue('PartyContactMech')
     partyContactMechMap.setPKFields(parameters)
@@ -161,16 +150,13 @@ Map deletePartyContactMech() {
     }
     partyContactMech.thruDate = UtilDateTime.nowTimestamp()
     partyContactMech.store()
-    return result
+    return success()
 }
 
 Map createPartyPostalAddress() {
     Map result = success()
     Map newPartyContactMech = [:]
-
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
     if (parameters.latitude) {
         if (parameters.longitude) {
             Map createGeoPointResult = run service: 'createGeoPoint', with: [*: parameters]
@@ -202,11 +188,8 @@ Map createPartyPostalAddress() {
 
 Map updatePartyPostalAddress() {
     Map result = success()
-
     GenericValue newPartyContactMech = makeValue('PartyContactMech')
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
     if (parameters.latitude) {
         if (parameters.longitude) {
             Map createGeoPointResult = run service: 'createGeoPoint', with: [*: parameters]
@@ -240,9 +223,7 @@ Map createPartyTelecomNumber() {
     Map result = success()
     Map newPartyContactMech = [:]
 
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     logInfo('Creating telecom number')
     Map createTelecomNumberResult = run service: 'createTelecomNumber', with: [*: parameters]
@@ -268,9 +249,7 @@ Map updatePartyTelecomNumber() {
     Map result = success()
 
     GenericValue newPartyContactMech = makeValue('PartyContactMech')
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     Map updateTelecomNumberResult = run service: 'updateTelecomNumber', with: [*: parameters]
     if (!isSuccess(updateTelecomNumberResult)) {
@@ -296,9 +275,7 @@ Map updatePartyTelecomNumber() {
 Map createPartyEmailAddress() {
     Map result = success()
 
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     // if-validate-method isEmail : le <else> devient le cas 'non valide'
     if (!UtilValidate.isEmail(parameters.emailAddress)) {
@@ -309,7 +286,9 @@ Map createPartyEmailAddress() {
     EntityCondition condition = EntityCondition.makeCondition([
             EntityCondition.makeCondition('partyId', parameters.partyId),
             EntityCondition.makeCondition('contactMechTypeId', 'EMAIL_ADDRESS'),
-            EntityCondition.makeCondition(EntityFunction.UPPER_FIELD('infoString'), EntityOperator.EQUALS, EntityFunction.UPPER(parameters.emailAddress))
+            EntityCondition.makeCondition(EntityFunction.UPPER_FIELD('infoString'),
+                    EntityOperator.EQUALS,
+                    EntityFunction.UPPER(parameters.emailAddress))
     ], EntityOperator.AND)
     List partyAndContactMechs = from('PartyAndContactMech').where(condition).queryList()
     partyAndContactMechs = EntityUtil.filterByDate(partyAndContactMechs)
@@ -334,9 +313,7 @@ Map createPartyEmailAddress() {
 Map updatePartyEmailAddress() {
     Map result = success()
 
-    if (!parameters.partyId) {
-        parameters.partyId = userLogin.partyId
-    }
+    parameters.partyId = parameters.partyId ?: userLogin.partyId
 
     if (!UtilValidate.isEmail(parameters.emailAddress)) {
         return error(label('PartyUiLabels', 'PartyEmailAddressNotFormattedCorrectly'))
@@ -361,15 +338,14 @@ Map findPartyFromEmailAddress() {
     input.inputFields = [:]
     input.filterByDate = 'Y'
     input.inputFields.infoString = parameters.address
-    String caseInsensitive = parameters.caseInsensitive
-    if (!caseInsensitive) {
-        caseInsensitive = EntityUtilProperties.getPropertyValue('general', 'mail.address.caseInsensitive', 'N', delegator)
-    }
+    String caseInsensitive = parameters.caseInsensitive ?:
+            EntityUtilProperties.getPropertyValue('general', 'mail.address.caseInsensitive', 'N', delegator)
+
     input.inputFields.infoString_ic = caseInsensitive
-    if (!parameters.fromDate) {
-        input.filterByDate = 'Y'
-    } else {
+    if (parameters.fromDate) {
         input.filterByDateValue = parameters.fromDate
+    } else {
+        input.filterByDate = 'Y'
     }
     // try primary email address
     input.inputFields.contactMechPurposeTypeId = 'PRIMARY_EMAIL'
@@ -480,7 +456,7 @@ Map createPostalAddressAndPurposes() {
                 .queryOne()
         if (!partyRole) {
             String roleTypeId = parameters.roleTypeId
-            return error(label('PartyUiLabels', 'PartyRoleTypeNotFoundForTheParty'))
+            return error(label('PartyUiLabels', 'PartyRoleTypeNotFoundForTheParty', [roleTypeId: roleTypeId]))
         }
     }
     Map createPartyPostalAddressResult = run service: 'createPartyPostalAddress', with: parameters
@@ -491,7 +467,7 @@ Map createPostalAddressAndPurposes() {
     result.contactMechId = createPartyPostalAddressResult.contactMechId
 
     if (parameters.setShippingPurpose || parameters.setBillingPurpose) {
-        if ('Y'.equals(parameters.setShippingPurpose)) {
+        if (parameters.setShippingPurpose == 'Y') {
             List pcmpList = from('PartyContactMechPurpose')
                     .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', 'SHIPPING_LOCATION')
                     .filterByDate()
@@ -517,7 +493,7 @@ Map createPostalAddressAndPurposes() {
                 return profileResult
             }
         }
-        if ('Y'.equals(parameters.setBillingPurpose)) {
+        if (parameters.setBillingPurpose == 'Y') {
             List pcmpList = from('PartyContactMechPurpose')
                     .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', 'BILLING_LOCATION')
                     .filterByDate()
@@ -593,7 +569,7 @@ Map updatePostalAddressAndPurposes() {
 
     // Setting the purposes
     if (parameters.setShippingPurpose || parameters.setBillingPurpose) {
-        if ('Y'.equals(parameters.setShippingPurpose)) {
+        if (parameters.setShippingPurpose == 'Y') {
             List pcmpShipList = from('PartyContactMechPurpose')
                     .where('partyId', userLogin.partyId,
                             'contactMechId', parameters.contactMechId,
@@ -602,7 +578,6 @@ Map updatePostalAddressAndPurposes() {
                     .queryList()
             // If purpose is not exists then create
             if (!pcmpShipList) {
-
                 List pcmpList = from('PartyContactMechPurpose')
                         .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', 'SHIPPING_LOCATION')
                         .filterByDate()
@@ -629,7 +604,7 @@ Map updatePostalAddressAndPurposes() {
                 return profileResult
             }
         }
-        if ('Y'.equals(parameters.setBillingPurpose)) {
+        if (parameters.setBillingPurpose == 'Y') {
             List pcmpBillList = from('PartyContactMechPurpose')
                     .where('partyId', userLogin.partyId,
                             'contactMechId', parameters.contactMechId,
@@ -691,7 +666,14 @@ Map createUpdatePartyEmailAddress() {
     Map result = success()
 
     String contactMechId = null
-    if (!parameters.contactMechId) {
+    if (parameters.contactMechId) {
+        Map updateResult = run service: 'updatePartyEmailAddress', with: [*: parameters]
+        if (!isSuccess(updateResult)) {
+            return updateResult
+        }
+        contactMechId = updateResult.contactMechId
+        logInfo("Email Contact updated emailContactMechId is ${contactMechId}")
+    } else {
         Map createResult = run service: 'createPartyEmailAddress', with: [*: parameters,
                                                                           partyId: parameters.partyId ?: userLogin.partyId]
         if (!isSuccess(createResult)) {
@@ -699,13 +681,6 @@ Map createUpdatePartyEmailAddress() {
         }
         contactMechId = createResult.contactMechId
         logInfo("Email Contact Created emailContactMechId is ${contactMechId}")
-    } else {
-        Map updateResult = run service: 'updatePartyEmailAddress', with: [*: parameters]
-        if (!isSuccess(updateResult)) {
-            return updateResult
-        }
-        contactMechId = updateResult.contactMechId
-        logInfo("Email Contact updated emailContactMechId is ${contactMechId}")
     }
     // entity-one sans field-map : la clé vient de la variable contactMechId du contexte
     GenericValue contactMech = from('ContactMech').where('contactMechId', contactMechId).queryOne()
@@ -719,20 +694,20 @@ Map createUpdatePartyTelecomNumber() {
     Map result = success()
 
     String contactMechId = null
-    if (!parameters.contactMechId) {
-        Map createResult = run service: 'createPartyTelecomNumber', with: [*: parameters]
-        if (!isSuccess(createResult)) {
-            return createResult
-        }
-        contactMechId = createResult.contactMechId
-        logInfo("Phone Contact created phoneContactMechId is ${contactMechId}")
-    } else {
+    if (parameters.contactMechId) {
         Map updateResult = run service: 'updatePartyTelecomNumber', with: [*: parameters]
         if (!isSuccess(updateResult)) {
             return updateResult
         }
         contactMechId = updateResult.contactMechId
         logInfo("Phone Contact updated phoneContactMechId is ${contactMechId}")
+    } else {
+        Map createResult = run service: 'createPartyTelecomNumber', with: [*: parameters]
+        if (!isSuccess(createResult)) {
+            return createResult
+        }
+        contactMechId = createResult.contactMechId
+        logInfo("Phone Contact created phoneContactMechId is ${contactMechId}")
     }
     result.contactMechId = contactMechId
     return result
@@ -743,20 +718,20 @@ Map createUpdatePartyPostalAddress() {
     Map result = success()
 
     String contactMechId
-    if (!parameters.contactMechId) {
-        Map createResult = run service: 'createPartyPostalAddress', with: [*: parameters]
-        if (!isSuccess(createResult)) {
-            return createResult
-        }
-        contactMechId = createResult.contactMechId
-        logInfo("Postal address created, contactMechId is ${contactMechId}")
-    } else {
+    if (parameters.contactMechId) {
         Map updateResult = run service: 'updatePartyPostalAddress', with: [*: parameters]
         if (!isSuccess(updateResult)) {
             return updateResult
         }
         contactMechId = updateResult.contactMechId
         logInfo("Postal address updated, contactMechId is ${contactMechId}")
+    } else {
+        Map createResult = run service: 'createPartyPostalAddress', with: [*: parameters]
+        if (!isSuccess(createResult)) {
+            return createResult
+        }
+        contactMechId = createResult.contactMechId
+        logInfo("Postal address created, contactMechId is ${contactMechId}")
     }
     result.contactMechId = contactMechId
     return result
