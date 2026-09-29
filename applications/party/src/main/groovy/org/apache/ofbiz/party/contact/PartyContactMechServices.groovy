@@ -27,7 +27,8 @@ import org.apache.ofbiz.entity.condition.EntityFunction
 import org.apache.ofbiz.entity.condition.EntityOperator
 import org.apache.ofbiz.entity.util.EntityUtil
 import org.apache.ofbiz.entity.util.EntityUtilProperties
-import org.apache.ofbiz.service.ServiceUtil
+
+import static org.apache.ofbiz.service.ServiceUtil.isSuccess
 
 Map createPartyContactMech() {
     Map result = success()
@@ -49,7 +50,9 @@ Map createPartyContactMech() {
         if ('N'.equals(contactMechType.hasTable)
                 && parameters.infoString == partyAndContactMech.infoString
                 && parameters.contactMechTypeId == partyAndContactMech.contactMechTypeId) {
-            logInfo("ContactMechId: ${partyAndContactMech.contactMechId} already exists with value: ${partyAndContactMech.infoString} for party: ${parameters.partyId} and ContactMechTypeId: ${partyAndContactMech.contactMechTypeId}")
+            logInfo("ContactMechId: ${partyAndContactMech.contactMechId}" +
+                    " already exists with value: ${partyAndContactMech.infoString} for party: ${parameters.partyId}" +
+                    " and ContactMechTypeId: ${partyAndContactMech.contactMechTypeId}")
             result.contactMechId = partyAndContactMech.contactMechId
             return result
         }
@@ -57,7 +60,7 @@ Map createPartyContactMech() {
 
     if (!parameters.contactMechId) {
         Map createContactMechResult = run service: 'createContactMech', with: [*: parameters]
-        if (!ServiceUtil.isSuccess(createContactMechResult)) {
+        if (!isSuccess(createContactMechResult)) {
             return createContactMechResult
         }
         newValue.contactMechId = createContactMechResult.contactMechId
@@ -96,7 +99,7 @@ Map updatePartyContactMech() {
     // If we already have a new contactMechId don't update ContactMech
     if (!parameters.newContactMechId) {
         Map updateContactMechResult = run service: 'updateContactMech', with: [*: parameters]
-        if (!ServiceUtil.isSuccess(updateContactMechResult)) {
+        if (!isSuccess(updateContactMechResult)) {
             return updateContactMechResult
         }
         // default-message PartyContactMechanismSuccessfullyUpdated
@@ -177,7 +180,7 @@ Map createPartyPostalAddress() {
     if (parameters.latitude) {
         if (parameters.longitude) {
             Map createGeoPointResult = run service: 'createGeoPoint', with: [*: parameters]
-            if (!ServiceUtil.isSuccess(createGeoPointResult)) {
+            if (!isSuccess(createGeoPointResult)) {
                 return createGeoPointResult
             }
             parameters.geoPointId = createGeoPointResult.geoPointId
@@ -185,7 +188,7 @@ Map createPartyPostalAddress() {
         }
     }
     Map createPostalAddressResult = run service: 'createPostalAddress', with: [*: parameters]
-    if (!ServiceUtil.isSuccess(createPostalAddressResult)) {
+    if (!isSuccess(createPostalAddressResult)) {
         return createPostalAddressResult
     }
     newPartyContactMech.contactMechId = createPostalAddressResult.contactMechId
@@ -194,7 +197,7 @@ Map createPartyPostalAddress() {
     Map createPartyContactMechResult = run service: 'createPartyContactMech', with: [*: parameters,
                                                                                      contactMechId: newPartyContactMech.contactMechId,
                                                                                      contactMechTypeId: 'POSTAL_ADDRESS']
-    if (!ServiceUtil.isSuccess(createPartyContactMechResult)) {
+    if (!isSuccess(createPartyContactMechResult)) {
         return createPartyContactMechResult
     }
 
@@ -213,7 +216,7 @@ Map updatePartyPostalAddress() {
     if (parameters.latitude) {
         if (parameters.longitude) {
             Map createGeoPointResult = run service: 'createGeoPoint', with: [*: parameters]
-            if (!ServiceUtil.isSuccess(createGeoPointResult)) {
+            if (!isSuccess(createGeoPointResult)) {
                 return createGeoPointResult
             }
             parameters.geoPointId = createGeoPointResult.geoPointId
@@ -221,7 +224,7 @@ Map updatePartyPostalAddress() {
         }
     }
     Map updatePostalAddressResult = run service: 'updatePostalAddress', with: [*: parameters]
-    if (!ServiceUtil.isSuccess(updatePostalAddressResult)) {
+    if (!isSuccess(updatePostalAddressResult)) {
         return updatePostalAddressResult
     }
     newPartyContactMech.contactMechId = updatePostalAddressResult.contactMechId
@@ -230,7 +233,7 @@ Map updatePartyPostalAddress() {
     Map updatePartyContactMechResult = run service: 'updatePartyContactMech', with: [*: parameters,
                                                                                      newContactMechId: newPartyContactMech.contactMechId,
                                                                                      contactMechTypeId: 'POSTAL_ADDRESS']
-    if (!ServiceUtil.isSuccess(updatePartyContactMechResult)) {
+    if (!isSuccess(updatePartyContactMechResult)) {
         return updatePartyContactMechResult
     }
 
@@ -249,7 +252,7 @@ Map createPartyTelecomNumber() {
 
     logInfo('Creating telecom number')
     Map createTelecomNumberResult = run service: 'createTelecomNumber', with: [*: parameters]
-    if (!ServiceUtil.isSuccess(createTelecomNumberResult)) {
+    if (!isSuccess(createTelecomNumberResult)) {
         return createTelecomNumberResult
     }
     newPartyContactMech.contactMechId = createTelecomNumberResult.contactMechId
@@ -258,7 +261,7 @@ Map createPartyTelecomNumber() {
     Map createPartyContactMechResult = run service: 'createPartyContactMech', with: [*: parameters,
                                                                                      contactMechId: newPartyContactMech.contactMechId,
                                                                                      contactMechTypeId: 'TELECOM_NUMBER']
-    if (!ServiceUtil.isSuccess(createPartyContactMechResult)) {
+    if (!isSuccess(createPartyContactMechResult)) {
         return createPartyContactMechResult
     }
 
@@ -276,7 +279,7 @@ Map updatePartyTelecomNumber() {
     }
 
     Map updateTelecomNumberResult = run service: 'updateTelecomNumber', with: [*: parameters]
-    if (!ServiceUtil.isSuccess(updateTelecomNumberResult)) {
+    if (!isSuccess(updateTelecomNumberResult)) {
         return updateTelecomNumberResult
     }
     newPartyContactMech.contactMechId = updateTelecomNumberResult.contactMechId
@@ -286,7 +289,7 @@ Map updatePartyTelecomNumber() {
                                                                                      newContactMechId: newPartyContactMech.contactMechId,
                                                                                      contactMechTypeId: 'TELECOM_NUMBER'
     ]
-    if (!ServiceUtil.isSuccess(updatePartyContactMechResult)) {
+    if (!isSuccess(updatePartyContactMechResult)) {
         return updatePartyContactMechResult
     }
     logInfo("Setting result id: ${newPartyContactMech.contactMechId}")
@@ -326,7 +329,7 @@ Map createPartyEmailAddress() {
     Map createPartyContactMechResult = run service: 'createPartyContactMech', with: [*: parameters,
                                                                                      infoString: parameters.emailAddress,
                                                                                      contactMechTypeId: 'EMAIL_ADDRESS']
-    if (!ServiceUtil.isSuccess(createPartyContactMechResult)) {
+    if (!isSuccess(createPartyContactMechResult)) {
         return createPartyContactMechResult
     }
     result.successMessage = label('PartyUiLabels', 'PartyEmailAddressSuccessfullyCreated')
@@ -348,7 +351,7 @@ Map updatePartyEmailAddress() {
     Map updatePartyContactMechResult = run service: 'updatePartyContactMech', with: [*: parameters,
                                                                                      infoString: parameters.emailAddress,
                                                                                      contactMechTypeId: 'EMAIL_ADDRESS']
-    if (!ServiceUtil.isSuccess(updatePartyContactMechResult)) {
+    if (!isSuccess(updatePartyContactMechResult)) {
         return updatePartyContactMechResult
     }
     result.successMessage = label('PartyUiLabels', 'PartyEmailAddressSuccessfullyUpdated')
@@ -378,7 +381,7 @@ Map findPartyFromEmailAddress() {
     input.inputFields.contactMechPurposeTypeId = 'PRIMARY_EMAIL'
     input.entityName = 'PartyContactDetailByPurpose'
     Map results = run service: 'performFindItem', with: input
-    if (!ServiceUtil.isSuccess(results)) {
+    if (!isSuccess(results)) {
         return results
     }
     // any other email address
@@ -386,7 +389,7 @@ Map findPartyFromEmailAddress() {
         input.entityName = 'PartyAndContactMech'
         input.inputFields.remove('contactMechPurposeTypeId') // clear-field
         results = run service: 'performFindItem', with: input
-        if (!ServiceUtil.isSuccess(results)) {
+        if (!isSuccess(results)) {
             return results
         }
     }
@@ -487,7 +490,7 @@ Map createPostalAddressAndPurposes() {
         }
     }
     Map createPartyPostalAddressResult = run service: 'createPartyPostalAddress', with: parameters
-    if (!ServiceUtil.isSuccess(createPartyPostalAddressResult)) {
+    if (!isSuccess(createPartyPostalAddressResult)) {
         return createPartyPostalAddressResult
     }
     parameters.contactMechId = createPartyPostalAddressResult.contactMechId
@@ -501,7 +504,7 @@ Map createPostalAddressAndPurposes() {
                     .queryList()
             for (GenericValue pcmp : pcmpList) {
                 Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
-                if (!ServiceUtil.isSuccess(expireResult)) {
+                if (!isSuccess(expireResult)) {
                     return expireResult
                 }
             }
@@ -509,14 +512,14 @@ Map createPostalAddressAndPurposes() {
                                                                                            partyId: userLogin.partyId,
                                                                                            contactMechPurposeTypeId: 'SHIPPING_LOCATION']
 
-            if (!ServiceUtil.isSuccess(createPurposeResult)) {
+            if (!isSuccess(createPurposeResult)) {
                 return createPurposeResult
             }
 
             Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
                                                                                defaultShipAddr: parameters.contactMechId,
                                                                                partyId: userLogin.partyId]
-            if (!ServiceUtil.isSuccess(profileResult)) {
+            if (!isSuccess(profileResult)) {
                 return profileResult
             }
         }
@@ -527,21 +530,21 @@ Map createPostalAddressAndPurposes() {
                     .queryList()
             for (GenericValue pcmp : pcmpList) {
                 Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
-                if (!ServiceUtil.isSuccess(expireResult)) {
+                if (!isSuccess(expireResult)) {
                     return expireResult
                 }
             }
             Map createPurposeResult = run service: 'createPartyContactMechPurpose', with: [*: parameters,
                                                                                            partyId: userLogin.partyId,
                                                                                            contactMechPurposeTypeId: 'BILLING_LOCATION']
-            if (!ServiceUtil.isSuccess(createPurposeResult)) {
+            if (!isSuccess(createPurposeResult)) {
                 return createPurposeResult
             }
 
             Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
                                                                                defaultBillAddr: parameters.contactMechId,
                                                                                partyId: userLogin.partyId]
-            if (!ServiceUtil.isSuccess(profileResult)) {
+            if (!isSuccess(profileResult)) {
                 return profileResult
             }
         }
@@ -560,14 +563,14 @@ Map updatePostalAddressAndPurposes() {
             || parameters.contactMechId == partyProfileDefault?.defaultShipAddr) {
         if (partyProfileDefault.defaultBillAddr != partyProfileDefault.defaultShipAddr) {
             Map updatePartyPostalAddressResult = run service: 'updatePartyPostalAddress', with: parameters
-            if (!ServiceUtil.isSuccess(updatePartyPostalAddressResult)) {
+            if (!isSuccess(updatePartyPostalAddressResult)) {
                 return updatePartyPostalAddressResult
             }
             parameters.contactMechId = updatePartyPostalAddressResult.contactMechId
             result.contactMechId = updatePartyPostalAddressResult.contactMechId
         } else {
             Map updatePostalAddressResult = run service: 'updatePostalAddress', with: [*: parameters]
-            if (!ServiceUtil.isSuccess(updatePostalAddressResult)) {
+            if (!isSuccess(updatePostalAddressResult)) {
                 return updatePostalAddressResult
             }
             result.successMessage = label('PartyUiLabels', 'PartyPostalAddressSuccessfullyUpdated')
@@ -578,7 +581,7 @@ Map updatePostalAddressAndPurposes() {
                 Map createPartyContactMechResult = run service: 'createPartyContactMech', with: [*: parameters,
                                                                                                  contactMechId: parameters.newContactMechId,
                                                                                                  contactMechTypeId: 'POSTAL_ADDRESS']
-                if (!ServiceUtil.isSuccess(createPartyContactMechResult)) {
+                if (!isSuccess(createPartyContactMechResult)) {
                     return createPartyContactMechResult
                 }
                 result.successMessage = label('PartyUiLabels', 'PartyPostalAddressSuccessfullyCreated')
@@ -587,7 +590,7 @@ Map updatePostalAddressAndPurposes() {
         }
     } else {
         Map updatePartyPostalAddressResult = run service: 'updatePartyPostalAddress', with: parameters
-        if (!ServiceUtil.isSuccess(updatePartyPostalAddressResult)) {
+        if (!isSuccess(updatePartyPostalAddressResult)) {
             return updatePartyPostalAddressResult
         }
         parameters.contactMechId = updatePartyPostalAddressResult.contactMechId
@@ -612,7 +615,7 @@ Map updatePostalAddressAndPurposes() {
                         .queryList()
                 for (GenericValue pcmp : pcmpList) {
                     Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
-                    if (!ServiceUtil.isSuccess(expireResult)) {
+                    if (!isSuccess(expireResult)) {
                         return expireResult
                     }
                 }
@@ -620,7 +623,7 @@ Map updatePostalAddressAndPurposes() {
                         [*: parameters,
                          partyId: userLogin.partyId,
                          contactMechPurposeTypeId: 'SHIPPING_LOCATION']
-                if (!ServiceUtil.isSuccess(createPurposeResult)) {
+                if (!isSuccess(createPurposeResult)) {
                     return createPurposeResult
                 }
             }
@@ -628,7 +631,7 @@ Map updatePostalAddressAndPurposes() {
             Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
                                                                                defaultShipAddr: parameters.contactMechId,
                                                                                partyId: userLogin.partyId]
-            if (!ServiceUtil.isSuccess(profileResult)) {
+            if (!isSuccess(profileResult)) {
                 return profileResult
             }
         }
@@ -647,7 +650,7 @@ Map updatePostalAddressAndPurposes() {
                         .queryList()
                 for (GenericValue pcmp : pcmpList) {
                     Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
-                    if (!ServiceUtil.isSuccess(expireResult)) {
+                    if (!isSuccess(expireResult)) {
                         return expireResult
                     }
                 }
@@ -655,7 +658,7 @@ Map updatePostalAddressAndPurposes() {
                         [*: parameters,
                          partyId: userLogin.partyId,
                          contactMechPurposeTypeId: 'BILLING_LOCATION']
-                if (!ServiceUtil.isSuccess(createPurposeResult)) {
+                if (!isSuccess(createPurposeResult)) {
                     return createPurposeResult
                 }
             }
@@ -663,7 +666,7 @@ Map updatePostalAddressAndPurposes() {
             Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
                                                                                defaultBillAddr: parameters.contactMechId,
                                                                                partyId: userLogin.partyId]
-            if (!ServiceUtil.isSuccess(profileResult)) {
+            if (!isSuccess(profileResult)) {
                 return profileResult
             }
         }
@@ -674,7 +677,7 @@ Map updatePostalAddressAndPurposes() {
 Map updateContactMechAndPurposes() {
     Map result = success()
     Map updatePostalAddressAndPurposesResult = run service: 'updatePostalAddressAndPurposes', with: [*: parameters]
-    if (!ServiceUtil.isSuccess(updatePostalAddressAndPurposesResult)) {
+    if (!isSuccess(updatePostalAddressAndPurposesResult)) {
         return updatePostalAddressAndPurposesResult
     }
     result.contactMechId = updatePostalAddressAndPurposesResult.contactMechId
@@ -682,7 +685,7 @@ Map updateContactMechAndPurposes() {
     if (parameters.phoneContactMechId) {
         Map updatePartyTelecomNumberResult = run service: 'updatePartyTelecomNumber', with: [*: parameters,
                                                                                              contactMechId: parameters.phoneContactMechId]
-        if (!ServiceUtil.isSuccess(updatePartyTelecomNumberResult)) {
+        if (!isSuccess(updatePartyTelecomNumberResult)) {
             return updatePartyTelecomNumberResult
         }
     }
@@ -697,14 +700,14 @@ Map createUpdatePartyEmailAddress() {
     if (!parameters.contactMechId) {
         Map createResult = run service: 'createPartyEmailAddress', with: [*: parameters,
                                                                           partyId: parameters.partyId ?: userLogin.partyId]
-        if (!ServiceUtil.isSuccess(createResult)) {
+        if (!isSuccess(createResult)) {
             return createResult
         }
         contactMechId = createResult.contactMechId
         logInfo("Email Contact Created emailContactMechId is ${contactMechId}")
     } else {
         Map updateResult = run service: 'updatePartyEmailAddress', with: [*: parameters]
-        if (!ServiceUtil.isSuccess(updateResult)) {
+        if (!isSuccess(updateResult)) {
             return updateResult
         }
         contactMechId = updateResult.contactMechId
@@ -724,14 +727,14 @@ Map createUpdatePartyTelecomNumber() {
     String contactMechId = null
     if (!parameters.contactMechId) {
         Map createResult = run service: 'createPartyTelecomNumber', with: [*: parameters]
-        if (!ServiceUtil.isSuccess(createResult)) {
+        if (!isSuccess(createResult)) {
             return createResult
         }
         contactMechId = createResult.contactMechId
         logInfo("Phone Contact created phoneContactMechId is ${contactMechId}")
     } else {
         Map updateResult = run service: 'updatePartyTelecomNumber', with: [*: parameters]
-        if (!ServiceUtil.isSuccess(updateResult)) {
+        if (!isSuccess(updateResult)) {
             return updateResult
         }
         contactMechId = updateResult.contactMechId
@@ -748,14 +751,14 @@ Map createUpdatePartyPostalAddress() {
     String contactMechId
     if (!parameters.contactMechId) {
         Map createResult = run service: 'createPartyPostalAddress', with: [*: parameters]
-        if (!ServiceUtil.isSuccess(createResult)) {
+        if (!isSuccess(createResult)) {
             return createResult
         }
         contactMechId = createResult.contactMechId
         logInfo("Postal address created, contactMechId is ${contactMechId}")
     } else {
         Map updateResult = run service: 'updatePartyPostalAddress', with: [*: parameters]
-        if (!ServiceUtil.isSuccess(updateResult)) {
+        if (!isSuccess(updateResult)) {
             return updateResult
         }
         contactMechId = updateResult.contactMechId
