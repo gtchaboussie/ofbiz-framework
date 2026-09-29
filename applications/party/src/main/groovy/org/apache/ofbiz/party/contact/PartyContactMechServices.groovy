@@ -39,7 +39,7 @@ Map createPartyContactMech() {
             .queryList()
     GenericValue alreadyExistingCMech = partyAndContactMechs.find { partyAndContactMech ->
         GenericValue contactMechType = from('ContactMechType')
-                .where("contactMechTypeId", partyAndContactMech.contactMechTypeId)
+                .where('contactMechTypeId', partyAndContactMech.contactMechTypeId)
                 .cache()
                 .queryOne()
         return (contactMechType.hasTable == 'N'
@@ -375,7 +375,7 @@ Map findPartyFromTelephone() {
     boolean complete = parameters.complete == 'Y'
     String inputTelno = complete ? parameters.telno : parameters.telno.replace('-', '')
     GenericValue relevantContactMech = contactMechs.find { contactMech ->
-        String phoneNb = complete ? (contactMech.tnContactNumber ?: '' as String) : (contactMech.tnContactNumber ?: '' as String).replace('-', '')
+        String phoneNb = complete ? (contactMech.tnContactNumber ?: '') : (contactMech.tnContactNumber ?: '').replace('-', '')
         String tnAreaCode = contactMech.tnAreaCode ?: ''
         return inputTelno == phoneNb ||
                 inputTelno == "$tnAreaCode$phoneNb" ||
