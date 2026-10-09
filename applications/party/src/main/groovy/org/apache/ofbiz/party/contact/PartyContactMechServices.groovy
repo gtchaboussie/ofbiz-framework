@@ -331,79 +331,47 @@ Map findPartyFromTelephone() {
 }
 
 Map createPostalAddressAndPurposes() {
-    Map result = success()
-
-    if (parameters.roleTypeId) {
-        // entity-one sans field-map : les clés primaires viennent du contexte
-        GenericValue partyRole = from('PartyRole')
-                .where('partyId', parameters.partyId, 'roleTypeId', parameters.roleTypeId)
-                .queryOne()
-        if (!partyRole) {
-            String roleTypeId = parameters.roleTypeId
-            return error(label('PartyUiLabels', 'PartyRoleTypeNotFoundForTheParty', [roleTypeId: roleTypeId]))
-        }
+    if (parameters.roleTypeId && from('PartyRole').where('partyId', parameters.partyId, 'roleTypeId', parameters.roleTypeId).queryCount() < 1) {
+        return error(label('PartyUiLabels', 'PartyRoleTypeNotFoundForTheParty', [roleTypeId: parameters.roleTypeId]))
     }
     Map createPartyPostalAddressResult = run service: 'createPartyPostalAddress', with: parameters
     if (!isSuccess(createPartyPostalAddressResult)) {
         return createPartyPostalAddressResult
     }
     parameters.contactMechId = createPartyPostalAddressResult.contactMechId
-    result.contactMechId = createPartyPostalAddressResult.contactMechId
 
-    if (parameters.setShippingPurpose || parameters.setBillingPurpose) {
-        if (parameters.setShippingPurpose == 'Y') {
-            List pcmpList = from('PartyContactMechPurpose')
-                    .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', 'SHIPPING_LOCATION')
-                    .filterByDate()
-                    .queryList()
-            for (GenericValue pcmp : pcmpList) {
-                Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
-                if (!isSuccess(expireResult)) {
-                    return expireResult
-                }
-            }
-            Map createPurposeResult = run service: 'createPartyContactMechPurpose', with: [*: parameters,
-                                                                                           partyId: userLogin.partyId,
-                                                                                           contactMechPurposeTypeId: 'SHIPPING_LOCATION']
-
-            if (!isSuccess(createPurposeResult)) {
-                return createPurposeResult
-            }
-
-            Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
-                                                                               defaultShipAddr: parameters.contactMechId,
-                                                                               partyId: userLogin.partyId]
-            if (!isSuccess(profileResult)) {
-                return profileResult
+    List purposeMaps = []
+    if (parameters.setShippingPurpose && parameters.setShippingPurpose == 'Y') {
+        purposeMaps << [purpose: 'SHIPPING_LOCATION', profileAttr: 'defaultShipAddr']
+    }
+    if (parameters.setBillingPurpose && parameters.setBillingPurpose == 'Y') {
+        purposeMaps << [purpose: 'BILLING_LOCATION', profileAttr: 'defaultBillAddr']
+    }
+    for (purposeMap in purposeMaps) {
+        List pcmpList = from('PartyContactMechPurpose')
+                .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', purposeMap.purpose)
+                .filterByDate()
+                .queryList()
+        for (GenericValue pcmp : pcmpList) {
+            Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
+            if (!isSuccess(expireResult)) {
+                return expireResult
             }
         }
-        if (parameters.setBillingPurpose == 'Y') {
-            List pcmpList = from('PartyContactMechPurpose')
-                    .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', 'BILLING_LOCATION')
-                    .filterByDate()
-                    .queryList()
-            for (GenericValue pcmp : pcmpList) {
-                Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
-                if (!isSuccess(expireResult)) {
-                    return expireResult
-                }
-            }
-            Map createPurposeResult = run service: 'createPartyContactMechPurpose', with: [*: parameters,
-                                                                                           partyId: userLogin.partyId,
-                                                                                           contactMechPurposeTypeId: 'BILLING_LOCATION']
-            if (!isSuccess(createPurposeResult)) {
-                return createPurposeResult
-            }
-
-            Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
-                                                                               defaultBillAddr: parameters.contactMechId,
-                                                                               partyId: userLogin.partyId]
-            if (!isSuccess(profileResult)) {
-                return profileResult
-            }
+        Map createPurposeResult = run service: 'createPartyContactMechPurpose', with: [*: parameters,
+                                                                                       partyId: userLogin.partyId,
+                                                                                       contactMechPurposeTypeId: purposeMap.purpose]
+        if (!isSuccess(createPurposeResult)) {
+            return createPurposeResult
+        }
+        Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
+                                                                           (purposeMap.profileAttr): parameters.contactMechId,
+                                                                           partyId: userLogin.partyId]
+        if (!isSuccess(profileResult)) {
+            return profileResult
         }
     }
-    return result
+    return success(contactMechId: createPartyPostalAddressResult.contactMechId)
 }
 
 Map updatePostalAddressAndPurposes() {
