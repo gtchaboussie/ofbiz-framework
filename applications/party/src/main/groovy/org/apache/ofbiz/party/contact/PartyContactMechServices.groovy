@@ -310,7 +310,6 @@ Map findPartyFromEmailAddress() {
 }
 
 Map findPartyFromTelephone() {
-    Map result = success()
     List contactMechs = from('PartyAndContactMech')
             .where('contactMechTypeId', 'TELECOM_NUMBER')
             .filterByDate()
@@ -326,10 +325,9 @@ Map findPartyFromTelephone() {
                 inputTelno == "+${contactMech.tnCountryCode ?: ''}$tnAreaCode$phoneNb"
     }
     if (relevantContactMech) {
-        result.partyId = relevantContactMech.partyId
-        result.contactMechId = relevantContactMech.contactMechId
+        return success([partyId: relevantContactMech.partyId, contactMechId: relevantContactMech.contactMechId])
     }
-    return result
+    return success()
 }
 
 Map createPostalAddressAndPurposes() {
