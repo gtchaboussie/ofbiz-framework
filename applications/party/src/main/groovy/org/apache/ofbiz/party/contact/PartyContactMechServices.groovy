@@ -236,12 +236,10 @@ Map updatePartyTelecomNumber() {
 }
 
 Map createPartyEmailAddress() {
-    Map result = success()
     parameters.partyId = parameters.partyId ?: userLogin.partyId
     if (!UtilValidate.isEmail(parameters.emailAddress as String)) {
         return error(label('PartyUiLabels', 'PartyEmailAddressNotFormattedCorrectly'))
     }
-
     EntityCondition condition = EntityCondition.makeCondition([
             EntityCondition.makeCondition('partyId', parameters.partyId),
             EntityCondition.makeCondition('contactMechTypeId', 'EMAIL_ADDRESS'),
@@ -249,24 +247,21 @@ Map createPartyEmailAddress() {
                     EntityOperator.EQUALS,
                     EntityFunction.upper(parameters.emailAddress))
     ], EntityOperator.AND)
-    List partyAndContactMechs = from('PartyAndContactMech').where(condition).queryList()
-    partyAndContactMechs = EntityUtil.filterByDate(partyAndContactMechs)
-    if (partyAndContactMechs) {
+    GenericValue partyAndContactMech = from('PartyAndContactMech')
+            .where(condition)
+            .filterByDate()
+            .queryFirst()
+    if (partyAndContactMech) {
         logInfo("E-mail address: ${parameters.emailAddress} already exists, did not add again..")
-        GenericValue existsPartyAndContactMech = EntityUtil.getFirst(partyAndContactMechs)
-        result.contactMechId = existsPartyAndContactMech.contactMechId
-        return result
+        return success(contactMechId: partyAndContactMech.contactMechId)
     }
-
     Map createPartyContactMechResult = run service: 'createPartyContactMech', with: [*: parameters,
                                                                                      infoString: parameters.emailAddress,
                                                                                      contactMechTypeId: 'EMAIL_ADDRESS']
     if (!isSuccess(createPartyContactMechResult)) {
         return createPartyContactMechResult
     }
-    result.successMessage = label('PartyUiLabels', 'PartyEmailAddressSuccessfullyCreated')
-    result.contactMechId = createPartyContactMechResult.contactMechId
-    return result
+    return success(label('PartyUiLabels', 'PartyEmailAddressSuccessfullyCreated'), [contactMechId: createPartyContactMechResult.contactMechId])
 }
 
 Map updatePartyEmailAddress() {
