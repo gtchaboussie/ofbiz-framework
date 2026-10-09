@@ -20,6 +20,7 @@ package org.apache.ofbiz.party.contact
 
 import static org.apache.ofbiz.service.ServiceUtil.isSuccess
 
+import java.sql.Timestamp
 import org.apache.ofbiz.base.util.UtilDateTime
 import org.apache.ofbiz.base.util.UtilValidate
 import org.apache.ofbiz.entity.GenericValue
@@ -52,10 +53,9 @@ Map createPartyContactMech() {
                 " and ContactMechTypeId: ${alreadyExistingCMech.contactMechTypeId}")
         return success(contactMechId: alreadyExistingCMech.contactMechId)
     }
-    GenericValue newValue = makeValue('PartyContactMech')
-    newValue.setNonPKFields(parameters)
-    newValue.partyId = parameters.partyId
-    newValue.fromDate = UtilDateTime.nowTimestamp()
+    GenericValue newValue = makeValue('PartyContactMech', [*:parameters,
+                                                           partyId: parameters.partyId,
+                                                           fromDate: UtilDateTime.nowTimestamp()])
     if (parameters.contactMechId) {
         newValue.contactMechId = parameters.contactMechId
         logInfo("Creating a PartyContactMech with id: ${parameters.contactMechId}")
