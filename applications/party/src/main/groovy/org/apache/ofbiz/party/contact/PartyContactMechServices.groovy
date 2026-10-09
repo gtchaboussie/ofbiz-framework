@@ -76,16 +76,15 @@ Map updatePartyContactMech() {
     Map result = success()
     parameters.partyId = parameters.partyId ?: userLogin.partyId
 
-    GenericValue partyContactMechMap = makeValue('PartyContactMech')
-    partyContactMechMap.setPKFields(parameters)
-    List partyContactMechs = from('PartyContactMech').where(partyContactMechMap).queryList()
-    List validPartyContactMechs = EntityUtil.filterByDate(partyContactMechs)
-    GenericValue partyContactMech = EntityUtil.getFirst(validPartyContactMechs)
-    if (!partyContactMech) {
+    GenericValue currentPartyContactMech = from('PartyContactMech')
+            .where(parameters)
+            .filterByDate()
+            .queryFirst()
+    if (!currentPartyContactMech) {
         return error(label('PartyUiLabels', 'PartyCannotUpdateContactBecauseNotWithSpecifiedParty'))
     }
 
-    GenericValue newPartyContactMech = (GenericValue) partyContactMech.clone()
+    GenericValue newPartyContactMech = currentPartyContactMech.clone()
 
     // If we already have a new contactMechId don't update ContactMech
     if (parameters.newContactMechId) {
@@ -96,46 +95,42 @@ Map updatePartyContactMech() {
         if (!isSuccess(updateContactMechResult)) {
             return updateContactMechResult
         }
-        // default-message PartyContactMechanismSuccessfullyUpdated
         result.successMessage = label('PartyUiLabels', 'PartyContactMechanismSuccessfullyUpdated')
         newPartyContactMech.contactMechId = updateContactMechResult.contactMechId
     }
 
+    Timestamp now = UtilDateTime.nowTimestamp()
     if (newPartyContactMech.contactMechId != parameters.contactMechId) {
         newPartyContactMech.setNonPKFields(parameters)
-        newPartyContactMech.fromDate = UtilDateTime.nowTimestamp()
-        partyContactMech.thruDate = UtilDateTime.nowTimestamp()
-        partyContactMech.store()
+        newPartyContactMech.fromDate = now
+        currentPartyContactMech.thruDate = now
+        currentPartyContactMech.store()
         newPartyContactMech.create()
-        List partyContactMechPurposes = partyContactMech.getRelated('PartyContactMechPurpose', null, null, false)
-        partyContactMechPurposes = EntityUtil.filterByDate(partyContactMechPurposes)
-        Map purposeMap = [:]
-        for (GenericValue partyContactMechPurposeOld : partyContactMechPurposes) {
-            GenericValue partyContactMechPurpose = (GenericValue) partyContactMechPurposeOld.clone()
-            partyContactMechPurposeOld.thruDate = UtilDateTime.nowTimestamp()
-            partyContactMechPurposeOld.store()
-
-            partyContactMechPurpose.contactMechId = newPartyContactMech.contactMechId
-            purposeMap.partyId = partyContactMechPurpose.partyId
-            purposeMap.contactMechPurposeTypeId = partyContactMechPurpose.contactMechPurposeTypeId
-            purposeMap.contactMechId = partyContactMechPurpose.contactMechId
-            List purposeResult = from('PartyContactMechPurpose').where(purposeMap).queryList()
-
+        List currentContactMechPurposes = currentPartyContactMech.getRelated('PartyContactMechPurpose', null, null, false)
+        currentContactMechPurposes = EntityUtil.filterByDate(currentContactMechPurposes)
+        for (GenericValue currentCMPurpose : currentContactMechPurposes) {
+            GenericValue newContactMechPurpose = (GenericValue) currentCMPurpose.clone()
+            currentCMPurpose.thruDate = now
+            currentCMPurpose.store()
+            newContactMechPurpose.contactMechId = newPartyContactMech.contactMechId
+            List purposeResult = from('PartyContactMechPurpose')
+                    .where(*: newContactMechPurpose)
+                    .queryList()
             if (!purposeResult) {
-                partyContactMechPurpose.create()
+                newContactMechPurpose.create()
             }
         }
         logInfo("Setting id to result: ${newPartyContactMech.contactMechId}")
         result.contactMechId = newPartyContactMech.contactMechId
     } else {
-        String extension = partyContactMech.extension
-        partyContactMech.setNonPKFields(parameters)
+        String extension = currentPartyContactMech.extension
+        currentPartyContactMech.setNonPKFields(parameters)
         if (parameters.extension != extension) {
-            partyContactMech.thruDate = null // value='' en minilang => null
+            currentPartyContactMech.thruDate = null
         }
-        partyContactMech.store()
-        logInfo("Setting id to result: ${partyContactMech.contactMechId}")
-        result.contactMechId = partyContactMech.contactMechId
+        currentPartyContactMech.store()
+        logInfo("Setting id to result: ${currentPartyContactMech.contactMechId}")
+        result.contactMechId = currentPartyContactMech.contactMechId
     }
     return result
 }
