@@ -208,7 +208,6 @@ Map createPartyTelecomNumber() {
         return createTelecomNumberResult
     }
     logInfo("Copied id to createPartyContactMechMap: ${createTelecomNumberResult.contactMechId}")
-
     Map createPartyContactMechResult = run service: 'createPartyContactMech', with: [*: parameters,
                                                                                      contactMechId: createTelecomNumberResult.contactMechId,
                                                                                      contactMechTypeId: 'TELECOM_NUMBER']
@@ -219,29 +218,21 @@ Map createPartyTelecomNumber() {
 }
 
 Map updatePartyTelecomNumber() {
-    Map result = success()
-    GenericValue newPartyContactMech = makeValue('PartyContactMech')
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-
     Map updateTelecomNumberResult = run service: 'updateTelecomNumber', with: [*: parameters]
     if (!isSuccess(updateTelecomNumberResult)) {
         return updateTelecomNumberResult
     }
-    newPartyContactMech.contactMechId = updateTelecomNumberResult.contactMechId
-    logInfo("Copied id to updatePartyContactMechMap: ${newPartyContactMech.contactMechId}")
-
+    logInfo("Copied id to updatePartyContactMechMap: ${updateTelecomNumberResult.contactMechId}")
     Map updatePartyContactMechResult = run service: 'updatePartyContactMech', with: [*: parameters,
-                                                                                     newContactMechId: newPartyContactMech.contactMechId,
+                                                                                     newContactMechId: updateTelecomNumberResult.contactMechId,
                                                                                      contactMechTypeId: 'TELECOM_NUMBER'
     ]
     if (!isSuccess(updatePartyContactMechResult)) {
         return updatePartyContactMechResult
     }
-    logInfo("Setting result id: ${newPartyContactMech.contactMechId}")
-
-    result.contactMechId = newPartyContactMech.contactMechId
-    result.successMessage = label('PartyUiLabels', 'PartyTelecomNumberSuccessfullyUpdated')
-    return result
+    logInfo("Setting result id: ${updateTelecomNumberResult.contactMechId}")
+    return success(label('PartyUiLabels', 'PartyTelecomNumberSuccessfullyUpdated'), [contactMechId: updateTelecomNumberResult.contactMechId])
 }
 
 Map createPartyEmailAddress() {
