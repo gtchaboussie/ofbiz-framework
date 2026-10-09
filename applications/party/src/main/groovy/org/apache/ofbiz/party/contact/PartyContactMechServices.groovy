@@ -100,7 +100,16 @@ Map updatePartyContactMech() {
     }
 
     Timestamp now = UtilDateTime.nowTimestamp()
-    if (newPartyContactMech.contactMechId != parameters.contactMechId) {
+    if (newPartyContactMech.contactMechId == parameters.contactMechId) {
+        String extension = currentPartyContactMech.extension
+        currentPartyContactMech.setNonPKFields(parameters)
+        if (parameters.extension != extension) {
+            currentPartyContactMech.thruDate = null
+        }
+        currentPartyContactMech.store()
+        logInfo("Setting id to result: ${currentPartyContactMech.contactMechId}")
+        result.contactMechId = currentPartyContactMech.contactMechId
+    } else {
         newPartyContactMech.setNonPKFields(parameters)
         newPartyContactMech.fromDate = now
         currentPartyContactMech.thruDate = now
@@ -122,15 +131,6 @@ Map updatePartyContactMech() {
         }
         logInfo("Setting id to result: ${newPartyContactMech.contactMechId}")
         result.contactMechId = newPartyContactMech.contactMechId
-    } else {
-        String extension = currentPartyContactMech.extension
-        currentPartyContactMech.setNonPKFields(parameters)
-        if (parameters.extension != extension) {
-            currentPartyContactMech.thruDate = null
-        }
-        currentPartyContactMech.store()
-        logInfo("Setting id to result: ${currentPartyContactMech.contactMechId}")
-        result.contactMechId = currentPartyContactMech.contactMechId
     }
     return result
 }
