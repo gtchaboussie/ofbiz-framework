@@ -201,28 +201,21 @@ Map updatePartyPostalAddress() {
 }
 
 Map createPartyTelecomNumber() {
-    Map result = success()
-    Map newPartyContactMech = [:]
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-
     logInfo('Creating telecom number')
     Map createTelecomNumberResult = run service: 'createTelecomNumber', with: [*: parameters]
     if (!isSuccess(createTelecomNumberResult)) {
         return createTelecomNumberResult
     }
-    newPartyContactMech.contactMechId = createTelecomNumberResult.contactMechId
-    logInfo("Copied id to createPartyContactMechMap: ${newPartyContactMech.contactMechId}")
+    logInfo("Copied id to createPartyContactMechMap: ${createTelecomNumberResult.contactMechId}")
 
     Map createPartyContactMechResult = run service: 'createPartyContactMech', with: [*: parameters,
-                                                                                     contactMechId: newPartyContactMech.contactMechId,
+                                                                                     contactMechId: createTelecomNumberResult.contactMechId,
                                                                                      contactMechTypeId: 'TELECOM_NUMBER']
     if (!isSuccess(createPartyContactMechResult)) {
         return createPartyContactMechResult
     }
-
-    result.contactMechId = newPartyContactMech.contactMechId
-    result.successMessage = label('PartyUiLabels', 'PartyTelecomNumberSuccessfullyCreated')
-    return result
+    return success(label('PartyUiLabels', 'PartyTelecomNumberSuccessfullyCreated'), [contactMechId: createTelecomNumberResult.contactMechId])
 }
 
 Map updatePartyTelecomNumber() {
