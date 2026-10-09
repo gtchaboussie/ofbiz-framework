@@ -53,7 +53,7 @@ Map createPartyContactMech() {
                 " and ContactMechTypeId: ${alreadyExistingCMech.contactMechTypeId}")
         return success(contactMechId: alreadyExistingCMech.contactMechId)
     }
-    GenericValue newValue = makeValue('PartyContactMech', [*:parameters,
+    GenericValue newValue = makeValue('PartyContactMech', [*: parameters,
                                                            partyId: parameters.partyId,
                                                            fromDate: UtilDateTime.nowTimestamp()])
     if (parameters.contactMechId) {
@@ -76,8 +76,10 @@ Map updatePartyContactMech() {
     Map result = success()
     parameters.partyId = parameters.partyId ?: userLogin.partyId
 
+    GenericValue pkFields = makeValue('PartyContactMech')
+    pkFields.setPKFields(parameters)
     GenericValue currentPartyContactMech = from('PartyContactMech')
-            .where(parameters)
+            .where(pkFields)
             .filterByDate()
             .queryFirst()
     if (!currentPartyContactMech) {
@@ -86,7 +88,6 @@ Map updatePartyContactMech() {
 
     GenericValue newPartyContactMech = currentPartyContactMech.clone()
 
-    // If we already have a new contactMechId don't update ContactMech
     if (parameters.newContactMechId) {
         newPartyContactMech.contactMechId = parameters.newContactMechId
         logInfo("Using supplied new contact mech id: ${newPartyContactMech.contactMechId}")
@@ -99,7 +100,6 @@ Map updatePartyContactMech() {
         newPartyContactMech.contactMechId = updateContactMechResult.contactMechId
     }
 
-    Timestamp now = UtilDateTime.nowTimestamp()
     if (newPartyContactMech.contactMechId == parameters.contactMechId) {
         String extension = currentPartyContactMech.extension
         currentPartyContactMech.setNonPKFields(parameters)
@@ -111,28 +111,32 @@ Map updatePartyContactMech() {
         result.contactMechId = currentPartyContactMech.contactMechId
     } else {
         newPartyContactMech.setNonPKFields(parameters)
-        newPartyContactMech.fromDate = now
-        currentPartyContactMech.thruDate = now
+        newPartyContactMech.fromDate = UtilDateTime.nowTimestamp()
+        currentPartyContactMech.thruDate = UtilDateTime.nowTimestamp()
         currentPartyContactMech.store()
         newPartyContactMech.create()
-        List currentContactMechPurposes = currentPartyContactMech.getRelated('PartyContactMechPurpose', null, null, false)
-        currentContactMechPurposes = EntityUtil.filterByDate(currentContactMechPurposes)
-        for (GenericValue currentCMPurpose : currentContactMechPurposes) {
-            GenericValue newContactMechPurpose = (GenericValue) currentCMPurpose.clone()
-            currentCMPurpose.thruDate = now
-            currentCMPurpose.store()
-            newContactMechPurpose.contactMechId = newPartyContactMech.contactMechId
-            List purposeResult = from('PartyContactMechPurpose')
-                    .where(*: newContactMechPurpose)
-                    .queryList()
-            if (!purposeResult) {
-                newContactMechPurpose.create()
-            }
-        }
+        transferContactMechPurpose(currentPartyContactMech, newPartyContactMech)
         logInfo("Setting id to result: ${newPartyContactMech.contactMechId}")
         result.contactMechId = newPartyContactMech.contactMechId
     }
     return result
+}
+
+private void transferContactMechPurpose(GenericValue currentPartyContactMech, GenericValue newPartyContactMech) {
+    List currentContactMechPurposes = from('PartyContactMechPurpose')
+            .where(partyId: currentPartyContactMech.partyId,
+                    contactMechId: currentPartyContactMech.contactMechId)
+            .filterByDate()
+            .queryList()
+    for (GenericValue currentCMPurpose : currentContactMechPurposes) {
+        GenericValue newContactMechPurpose = (GenericValue) currentCMPurpose.clone()
+        currentCMPurpose.thruDate = UtilDateTime.nowTimestamp()
+        currentCMPurpose.store()
+        newContactMechPurpose.contactMechId = newPartyContactMech.contactMechId
+        if (from('PartyContactMechPurpose').where(*: newContactMechPurpose).queryCount() < 1) {
+            newContactMechPurpose.create()
+        }
+    }
 }
 
 Map deletePartyContactMech() {
