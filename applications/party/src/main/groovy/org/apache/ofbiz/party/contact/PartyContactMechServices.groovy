@@ -18,16 +18,15 @@
  */
 package org.apache.ofbiz.party.contact
 
-import static org.apache.ofbiz.service.ServiceUtil.isSuccess
-
 import org.apache.ofbiz.base.util.UtilDateTime
-import org.apache.ofbiz.base.util.UtilValidate
 import org.apache.ofbiz.entity.GenericValue
 import org.apache.ofbiz.entity.condition.EntityCondition
 import org.apache.ofbiz.entity.condition.EntityFunction
 import org.apache.ofbiz.entity.condition.EntityOperator
-import org.apache.ofbiz.entity.util.EntityUtil
 import org.apache.ofbiz.entity.util.EntityUtilProperties
+
+import static org.apache.ofbiz.base.util.UtilValidate.isEmail
+import static org.apache.ofbiz.service.ServiceUtil.isSuccess
 
 Map createPartyContactMech() {
     parameters.partyId = parameters.partyId ?: userLogin.partyId
@@ -237,7 +236,7 @@ Map updatePartyTelecomNumber() {
 
 Map createPartyEmailAddress() {
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-    if (!UtilValidate.isEmail(parameters.emailAddress as String)) {
+    if (!isEmail(parameters.emailAddress as String)) {
         return error(label('PartyUiLabels', 'PartyEmailAddressNotFormattedCorrectly'))
     }
     EntityCondition condition = EntityCondition.makeCondition([
@@ -265,23 +264,16 @@ Map createPartyEmailAddress() {
 }
 
 Map updatePartyEmailAddress() {
-    Map result = success()
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-
-    if (!UtilValidate.isEmail(parameters.emailAddress)) {
-        return error(label('PartyUiLabels', 'PartyEmailAddressNotFormattedCorrectly'))
-    }
-
+    require(isEmail(parameters.emailAddress as String), label('PartyUiLabels', 'PartyEmailAddressNotFormattedCorrectly'))
     Map updatePartyContactMechResult = run service: 'updatePartyContactMech', with: [*: parameters,
                                                                                      infoString: parameters.emailAddress,
                                                                                      contactMechTypeId: 'EMAIL_ADDRESS']
     if (!isSuccess(updatePartyContactMechResult)) {
         return updatePartyContactMechResult
     }
-    result.successMessage = label('PartyUiLabels', 'PartyEmailAddressSuccessfullyUpdated')
-    result.contactMechId = updatePartyContactMechResult.contactMechId
-    result.oldContactMechId = parameters.contactMechId
-    return result
+    return success(label('PartyUiLabels', 'PartyEmailAddressSuccessfullyUpdated'), [contactMechId: updatePartyContactMechResult.contactMechId,
+                                                                                    oldContactMechId: parameters.contactMechId ])
 }
 
 Map findPartyFromEmailAddress() {
