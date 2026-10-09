@@ -20,7 +20,6 @@ package org.apache.ofbiz.party.contact
 
 import static org.apache.ofbiz.service.ServiceUtil.isSuccess
 
-import java.sql.Timestamp
 import org.apache.ofbiz.base.util.UtilDateTime
 import org.apache.ofbiz.base.util.UtilValidate
 import org.apache.ofbiz.entity.GenericValue
@@ -73,9 +72,8 @@ Map createPartyContactMech() {
 }
 
 Map updatePartyContactMech() {
-    Map result = success()
+    String contactMechId
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-
     GenericValue pkFields = makeValue('PartyContactMech')
     pkFields.setPKFields(parameters)
     GenericValue currentPartyContactMech = from('PartyContactMech')
@@ -87,7 +85,6 @@ Map updatePartyContactMech() {
     }
 
     GenericValue newPartyContactMech = currentPartyContactMech.clone()
-
     if (parameters.newContactMechId) {
         newPartyContactMech.contactMechId = parameters.newContactMechId
         logInfo("Using supplied new contact mech id: ${newPartyContactMech.contactMechId}")
@@ -96,7 +93,6 @@ Map updatePartyContactMech() {
         if (!isSuccess(updateContactMechResult)) {
             return updateContactMechResult
         }
-        result.successMessage = label('PartyUiLabels', 'PartyContactMechanismSuccessfullyUpdated')
         newPartyContactMech.contactMechId = updateContactMechResult.contactMechId
     }
 
@@ -108,21 +104,21 @@ Map updatePartyContactMech() {
         }
         currentPartyContactMech.store()
         logInfo("Setting id to result: ${currentPartyContactMech.contactMechId}")
-        result.contactMechId = currentPartyContactMech.contactMechId
+        contactMechId = currentPartyContactMech.contactMechId
     } else {
         newPartyContactMech.setNonPKFields(parameters)
         newPartyContactMech.fromDate = UtilDateTime.nowTimestamp()
         currentPartyContactMech.thruDate = UtilDateTime.nowTimestamp()
         currentPartyContactMech.store()
         newPartyContactMech.create()
-        transferContactMechPurpose(currentPartyContactMech, newPartyContactMech)
+        transferContactMechPurposes(currentPartyContactMech, newPartyContactMech)
         logInfo("Setting id to result: ${newPartyContactMech.contactMechId}")
-        result.contactMechId = newPartyContactMech.contactMechId
+        contactMechId = newPartyContactMech.contactMechId
     }
-    return result
+    return success(label('PartyUiLabels', 'PartyContactMechanismSuccessfullyUpdated'), [contactMechId: contactMechId])
 }
 
-private void transferContactMechPurpose(GenericValue currentPartyContactMech, GenericValue newPartyContactMech) {
+private void transferContactMechPurposes(GenericValue currentPartyContactMech, GenericValue newPartyContactMech) {
     List currentContactMechPurposes = from('PartyContactMechPurpose')
             .where(partyId: currentPartyContactMech.partyId,
                     contactMechId: currentPartyContactMech.contactMechId)
@@ -141,12 +137,12 @@ private void transferContactMechPurpose(GenericValue currentPartyContactMech, Ge
 
 Map deletePartyContactMech() {
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-
     GenericValue partyContactMechMap = makeValue('PartyContactMech')
     partyContactMechMap.setPKFields(parameters)
-    List partyContactMechs = from('PartyContactMech').where(partyContactMechMap).queryList()
-    List validPartyContactMechs = EntityUtil.filterByDate(partyContactMechs)
-    GenericValue partyContactMech = EntityUtil.getFirst(validPartyContactMechs)
+    GenericValue partyContactMech = from('PartyContactMech')
+            .where(partyContactMechMap)
+            .filterByDate()
+            .queryFirst()
     if (!partyContactMech) {
         return error(label('PartyUiLabels', 'PartyContactMechNotFoundCannotDelete'))
     }
@@ -156,58 +152,44 @@ Map deletePartyContactMech() {
 }
 
 Map createPartyPostalAddress() {
-    Map result = success()
     Map newPartyContactMech = [:]
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-    if (parameters.latitude) {
-        if (parameters.longitude) {
-            Map createGeoPointResult = run service: 'createGeoPoint', with: [*: parameters]
-            if (!isSuccess(createGeoPointResult)) {
-                return createGeoPointResult
-            }
-            parameters.geoPointId = createGeoPointResult.geoPointId
-            // check-errors
+    if (parameters.latitude && parameters.longitude) {
+        Map createGeoPointResult = run service: 'createGeoPoint', with: [*: parameters]
+        if (!isSuccess(createGeoPointResult)) {
+            return createGeoPointResult
         }
+        parameters.geoPointId = createGeoPointResult.geoPointId
     }
     Map createPostalAddressResult = run service: 'createPostalAddress', with: [*: parameters]
     if (!isSuccess(createPostalAddressResult)) {
         return createPostalAddressResult
     }
     newPartyContactMech.contactMechId = createPostalAddressResult.contactMechId
-    // check-errors
-
     Map createPartyContactMechResult = run service: 'createPartyContactMech', with: [*: parameters,
                                                                                      contactMechId: newPartyContactMech.contactMechId,
                                                                                      contactMechTypeId: 'POSTAL_ADDRESS']
     if (!isSuccess(createPartyContactMechResult)) {
         return createPartyContactMechResult
     }
-
-    result.contactMechId = newPartyContactMech.contactMechId
-    result.successMessage = label('PartyUiLabels', 'PartyPostalAddressSuccessfullyCreated')
-    return result
+    return success(label('PartyUiLabels', 'PartyPostalAddressSuccessfullyCreated'), [contactMechId: newPartyContactMech.contactMechId])
 }
 
 Map updatePartyPostalAddress() {
-    Map result = success()
     GenericValue newPartyContactMech = makeValue('PartyContactMech')
     parameters.partyId = parameters.partyId ?: userLogin.partyId
-    if (parameters.latitude) {
-        if (parameters.longitude) {
-            Map createGeoPointResult = run service: 'createGeoPoint', with: [*: parameters]
-            if (!isSuccess(createGeoPointResult)) {
-                return createGeoPointResult
-            }
-            parameters.geoPointId = createGeoPointResult.geoPointId
-            // check-errors
+    if (parameters.latitude && parameters.longitude) {
+        Map createGeoPointResult = run service: 'createGeoPoint', with: [*: parameters]
+        if (!isSuccess(createGeoPointResult)) {
+            return createGeoPointResult
         }
+        parameters.geoPointId = createGeoPointResult.geoPointId
     }
     Map updatePostalAddressResult = run service: 'updatePostalAddress', with: [*: parameters]
     if (!isSuccess(updatePostalAddressResult)) {
         return updatePostalAddressResult
     }
     newPartyContactMech.contactMechId = updatePostalAddressResult.contactMechId
-
     logInfo("Copied id to updatePartyContactMechMap: ${newPartyContactMech.contactMechId}")
     Map updatePartyContactMechResult = run service: 'updatePartyContactMech', with: [*: parameters,
                                                                                      newContactMechId: newPartyContactMech.contactMechId,
@@ -215,10 +197,7 @@ Map updatePartyPostalAddress() {
     if (!isSuccess(updatePartyContactMechResult)) {
         return updatePartyContactMechResult
     }
-
-    result.contactMechId = newPartyContactMech.contactMechId
-    result.successMessage = label('PartyUiLabels', 'PartyPostalAddressSuccessfullyUpdated')
-    return result
+    return success(label('PartyUiLabels', 'PartyPostalAddressSuccessfullyUpdated'), [contactMechId: newPartyContactMech.contactMechId])
 }
 
 Map createPartyTelecomNumber() {
