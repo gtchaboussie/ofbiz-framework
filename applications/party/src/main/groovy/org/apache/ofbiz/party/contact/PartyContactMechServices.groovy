@@ -244,7 +244,7 @@ Map createPartyEmailAddress() {
             EntityCondition.makeCondition('contactMechTypeId', 'EMAIL_ADDRESS'),
             EntityCondition.makeCondition(EntityFunction.upper('infoString'),
                     EntityOperator.EQUALS,
-                    EntityFunction.upper(parameters.emailAddress))
+                    EntityFunction.upper(parameters.emailAddress)) // TODO passer par un performFind
     ], EntityOperator.AND)
     GenericValue partyAndContactMech = from('PartyAndContactMech')
             .where(condition)
@@ -273,28 +273,22 @@ Map updatePartyEmailAddress() {
         return updatePartyContactMechResult
     }
     return success(label('PartyUiLabels', 'PartyEmailAddressSuccessfullyUpdated'), [contactMechId: updatePartyContactMechResult.contactMechId,
-                                                                                    oldContactMechId: parameters.contactMechId ])
+                                                                                    oldContactMechId: parameters.contactMechId])
 }
 
 Map findPartyFromEmailAddress() {
-    Map result = success()
-
-    Map input = [:]
-    input.inputFields = [:]
-    input.filterByDate = 'Y'
-    input.inputFields.infoString = parameters.address
     String caseInsensitive = parameters.caseInsensitive ?:
             EntityUtilProperties.getPropertyValue('general', 'mail.address.caseInsensitive', 'N', delegator)
-
-    input.inputFields.infoString_ic = caseInsensitive
+    Map input = [entityName: 'PartyContactDetailByPurpose',
+                 inputFields: [infoString: parameters.address,
+                               infoString_ic: caseInsensitive,
+                               contactMechPurposeTypeId: 'PRIMARY_EMAIL'],
+                 filterByDate: 'Y']
     if (parameters.fromDate) {
         input.filterByDateValue = parameters.fromDate
     } else {
         input.filterByDate = 'Y'
     }
-    // try primary email address
-    input.inputFields.contactMechPurposeTypeId = 'PRIMARY_EMAIL'
-    input.entityName = 'PartyContactDetailByPurpose'
     Map results = run service: 'performFindItem', with: input
     if (!isSuccess(results)) {
         return results
@@ -302,17 +296,17 @@ Map findPartyFromEmailAddress() {
     // any other email address
     if (!results.item) {
         input.entityName = 'PartyAndContactMech'
-        input.inputFields.remove('contactMechPurposeTypeId') // clear-field
+        input.inputFields.remove('contactMechPurposeTypeId')
         results = run service: 'performFindItem', with: input
         if (!isSuccess(results)) {
             return results
         }
     }
     if (results.item) {
-        result.partyId = results.item.partyId
-        result.contactMechId = results.item.contactMechId
+        return success([partyId: results.item.partyId, contactMechId: results.item.contactMechId])
     }
-    return result
+    return success()
+
 }
 
 Map findPartyFromTelephone() {
