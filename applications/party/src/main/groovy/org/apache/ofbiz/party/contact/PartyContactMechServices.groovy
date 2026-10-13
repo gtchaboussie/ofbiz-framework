@@ -330,7 +330,7 @@ Map findPartyFromTelephone() {
     return success()
 }
 
-Map createPostalAddressAndPurposes() {
+Map createPostalAddressAndPurposes() { // TODO penser à le tester
     if (parameters.roleTypeId && from('PartyRole').where('partyId', parameters.partyId, 'roleTypeId', parameters.roleTypeId).queryCount() < 1) {
         return error(label('PartyUiLabels', 'PartyRoleTypeNotFoundForTheParty', [roleTypeId: parameters.roleTypeId]))
     }
@@ -380,8 +380,7 @@ Map updatePostalAddressAndPurposes() {
     GenericValue partyProfileDefault = from('PartyProfileDefault')
             .where('partyId', userLogin.partyId, 'productStoreId', parameters.productStoreId)
             .queryOne()
-    if (parameters.contactMechId == partyProfileDefault?.defaultBillAddr
-            || parameters.contactMechId == partyProfileDefault?.defaultShipAddr) {
+    if (parameters.contactMechId == partyProfileDefault?.defaultBillAddr || parameters.contactMechId == partyProfileDefault?.defaultShipAddr) {
         if (partyProfileDefault.defaultBillAddr != partyProfileDefault.defaultShipAddr) {
             Map updatePartyPostalAddressResult = run service: 'updatePartyPostalAddress', with: parameters
             if (!isSuccess(updatePartyPostalAddressResult)) {
@@ -418,77 +417,35 @@ Map updatePostalAddressAndPurposes() {
         result.contactMechId = updatePartyPostalAddressResult.contactMechId
     }
 
-    // Setting the purposes
-    if (parameters.setShippingPurpose || parameters.setBillingPurpose) {
-        if (parameters.setShippingPurpose == 'Y') {
-            List pcmpShipList = from('PartyContactMechPurpose')
-                    .where('partyId', userLogin.partyId,
-                            'contactMechId', parameters.contactMechId,
-                            'contactMechPurposeTypeId', 'SHIPPING_LOCATION')
-                    .filterByDate()
-                    .queryList()
-            // If purpose is not exists then create
-            if (!pcmpShipList) {
-                List pcmpList = from('PartyContactMechPurpose')
-                        .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', 'SHIPPING_LOCATION')
-                        .filterByDate()
-                        .queryList()
-                for (GenericValue pcmp : pcmpList) {
-                    Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
-                    if (!isSuccess(expireResult)) {
-                        return expireResult
-                    }
-                }
-                Map createPurposeResult = run service: 'createPartyContactMechPurpose', with:
-                        [*: parameters,
-                         partyId: userLogin.partyId,
-                         contactMechPurposeTypeId: 'SHIPPING_LOCATION']
-                if (!isSuccess(createPurposeResult)) {
-                    return createPurposeResult
-                }
-            }
-
-            Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
-                                                                               defaultShipAddr: parameters.contactMechId,
-                                                                               partyId: userLogin.partyId]
-            if (!isSuccess(profileResult)) {
-                return profileResult
+    List purposeMaps = []
+    if (parameters.setShippingPurpose && parameters.setShippingPurpose == 'Y') {
+        purposeMaps << [purpose: 'SHIPPING_LOCATION', profileAttr: 'defaultShipAddr']
+    }
+    if (parameters.setBillingPurpose && parameters.setBillingPurpose == 'Y') {
+        purposeMaps << [purpose: 'BILLING_LOCATION', profileAttr: 'defaultBillAddr']
+    }
+    for (purposeMap in purposeMaps) {
+        List pcmpList = from('PartyContactMechPurpose')
+                .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', purposeMap.purpose)
+                .filterByDate()
+                .queryList()
+        for (GenericValue pcmp : pcmpList) {
+            Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
+            if (!isSuccess(expireResult)) {
+                return expireResult
             }
         }
-        if (parameters.setBillingPurpose == 'Y') {
-            List pcmpBillList = from('PartyContactMechPurpose')
-                    .where('partyId', userLogin.partyId,
-                            'contactMechId', parameters.contactMechId,
-                            'contactMechPurposeTypeId', 'BILLING_LOCATION')
-                    .filterByDate()
-                    .queryList()
-            // If purpose is not exists then create
-            if (!pcmpBillList) {
-                List pcmpList = from('PartyContactMechPurpose')
-                        .where('partyId', userLogin.partyId, 'contactMechPurposeTypeId', 'BILLING_LOCATION')
-                        .filterByDate()
-                        .queryList()
-                for (GenericValue pcmp : pcmpList) {
-                    Map expireResult = run service: 'expirePartyContactMechPurpose', with: pcmp
-                    if (!isSuccess(expireResult)) {
-                        return expireResult
-                    }
-                }
-                Map createPurposeResult = run service: 'createPartyContactMechPurpose', with:
-                        [*: parameters,
-                         partyId: userLogin.partyId,
-                         contactMechPurposeTypeId: 'BILLING_LOCATION']
-                if (!isSuccess(createPurposeResult)) {
-                    return createPurposeResult
-                }
-            }
-
-            Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
-                                                                               defaultBillAddr: parameters.contactMechId,
-                                                                               partyId: userLogin.partyId]
-            if (!isSuccess(profileResult)) {
-                return profileResult
-            }
+        Map createPurposeResult = run service: 'createPartyContactMechPurpose', with: [*: parameters,
+                                                                                       partyId: userLogin.partyId,
+                                                                                       contactMechPurposeTypeId: purposeMap.purpose]
+        if (!isSuccess(createPurposeResult)) {
+            return createPurposeResult
+        }
+        Map profileResult = run service: 'setPartyProfileDefaults', with: [*: parameters,
+                                                                           (purposeMap.profileAttr): parameters.contactMechId,
+                                                                           partyId: userLogin.partyId]
+        if (!isSuccess(profileResult)) {
+            return profileResult
         }
     }
     return result
